@@ -2,566 +2,479 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>EmpireImmo — Conseiller Tactique</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&family=Familjen+Grotesk:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Empire Immo - Liste des Joueurs</title>
     <style>
         :root {
-            --bg:          #F5F3EE;
-            --bg2:         #FFFFFF;
-            --bg3:         #EDEAE3;
-            --panel-dark:  #1C2340;
-            --panel-dark2: #141929;
-            --surface:     #FFFFFF;
-            --input-dark:  #252D4A;
-            --border:      #E0DDD5;
-            --border-dark: rgba(255,255,255,0.10);
-            --text:        #1A1A2E;
-            --text-2:      #6B6880;
-            --text-3:      #A8A5B5;
-            --text-inv:    #FFFFFF;
-            --text-inv2:   #A8A5B5;
-            --blue:        #2563EB;
-            --blue-dim:    rgba(37, 99, 235, 0.05);
-            --green:       #059669;
-            --red:         #DC2626;
-            --orange:      #D97706;
-            --r:           16px;
-            --r-sm:        10px;
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --background-color: #f8fafc;
+            --card-background: #ffffff;
+            --text-color: #1e293b;
+            --text-light: #64748b;
+            --border-color: #e2e8f0;
+            --accent-color: #0ea5e9;
         }
 
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
-            font-family: 'Lexend', sans-serif; background: var(--bg); color: var(--text);
-            min-height: 100dvh; display: flex; flex-direction: column; -webkit-font-smoothing: antialiased;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            padding: 20px;
+            line-height: 1.6;
         }
 
-        /* HEADER & TABS */
-        .header { background: var(--panel-dark); position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border-dark); }
-        .header-title { padding: 14px 16px 10px; display: flex; justify-content: space-between; align-items: center; }
-        .logo { font-family: 'Familjen Grotesk', sans-serif; font-size: 18px; font-weight: 700; color: var(--text-inv); letter-spacing: -0.3px; }
-        .logo em { font-style: italic; color: rgba(255,255,255,0.4); }
-        .tabs { display: flex; padding: 0 10px; gap: 4px; overflow-x: auto; scrollbar-width: none; }
-        .tabs::-webkit-scrollbar { display: none; }
-        .tab-btn {
-            background: none; border: none; color: var(--text-3); padding: 10px 14px; font-family: inherit;
-            font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; border-bottom: 3px solid transparent; transition: all 0.15s;
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
         }
-        .tab-btn:hover { color: var(--text-inv); }
-        .tab-btn.active { color: var(--text-inv); border-bottom-color: var(--blue); }
 
-        /* BASE LAYOUT */
-        .tab-content { display: none; flex-direction: column; flex: 1; }
-        .tab-content.active { display: flex; }
-        
-        .panel { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 16px; }
-        .panel-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
-        
-        /* FORM COMPONENTS */
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-        .form-group { display: flex; flex-direction: column; gap: 5px; }
-        .form-group label { font-size: 11px; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.3px; }
-        .input-wrapper { position: relative; display: flex; align-items: center; width: 100%; }
-        .input-wrapper input, .input-wrapper select {
-            width: 100%; padding: 10px 12px; font-family: inherit; font-size: 14px; font-weight: 500;
-            background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--text); outline: none; transition: border 0.15s;
+        header {
+            text-align: center;
+            margin-bottom: 30px;
         }
-        .input-wrapper input:focus { border-color: var(--blue); background: var(--bg2); }
-        .input-wrapper .unit { position: absolute; right: 12px; font-size: 12px; font-weight: 600; color: var(--text-3); pointer-events: none; }
-        .input-wrapper.has-unit input { padding-right: 35px; }
 
-        .btn-calc {
-            background: var(--blue); color: #fff; border: none; padding: 12px; font-family: inherit;
-            font-size: 13px; font-weight: 700; border-radius: var(--r-sm); cursor: pointer; width: 100%; transition: opacity 0.15s;
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 5px;
         }
-        .btn-calc:active { opacity: 0.8; }
 
-        /* CARDS & RESULTS LISTS */
-        .bar-results { display: none; padding: 10px 14px; align-items: center; justify-content: space-between; gap: 12px; background: var(--bg); border-bottom: 1px solid var(--border); }
-        .bar-results.visible { display: flex; }
-        .search-wrap { flex: 1; }
-        .search-wrap input { width: 100%; padding: 6px 12px; font-family: inherit; font-size: 13px; background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; outline: none; }
-        .cpt-results { font-size: 12px; color: var(--text-2); white-space: nowrap; }
-
-        .cards-list { padding: 14px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
-        .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); overflow: hidden; transition: transform 0.15s; cursor: pointer; }
-        .card-main { padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-        .card-name { font-size: 14px; font-weight: 700; color: var(--text); }
-        .card-type { font-size: 11px; font-weight: 600; color: var(--text-2); margin-top: 1px; }
-
-        /* ALLIANCE SPECIAL DESIGN */
-        .alliance-card {
-            display: flex; align-items: center; justify-content: space-between;
-            background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm);
-            padding: 12px 14px; margin-bottom: 8px; transition: background 0.2s, border-color 0.2s;
+        #api-description {
+            font-style: italic;
+            color: var(--text-light);
+            margin-bottom: 10px;
         }
-        .alliance-card.checked { background: var(--blue-dim); border-color: var(--blue); }
-        .alliance-info { flex: 1; min-width: 0; }
-        .alliance-name { font-size: 13px; font-weight: 700; color: var(--text); }
-        .alliance-sub { font-size: 10px; color: var(--text-3); margin-top: 2px; }
-        .alliance-check-btn {
-            width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--border); background: var(--bg);
-            cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; color: transparent; transition: all 0.2s;
-        }
-        .alliance-card.checked .alliance-check-btn { background: var(--blue); border-color: var(--blue); color: #fff; }
 
-        /* MODAL */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(20,25,45,0.4); backdrop-filter: blur(4px); z-index: 100; display: none; align-items: center; justify-content: center; padding: 16px; }
-        .modal-overlay.open { display: flex; }
-        .modal-card { background: var(--bg2); width: 100%; max-width: 420px; border-radius: var(--r); box-shadow: 0 12px 36px rgba(0,0,0,0.15); overflow: hidden; display: flex; flex-direction: column; max-height: 85vh; }
-        .modal-header { padding: 14px 16px; background: var(--panel-dark); color: #fff; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 700; }
-        .modal-body { padding: 16px; overflow-y: auto; }
-        
-        .table-perf { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
-        .table-perf th { text-align: left; padding: 8px; font-size: 11px; text-transform: uppercase; color: var(--text-2); border-bottom: 1px solid var(--border); }
-        .table-perf td { padding: 8px; border-bottom: 1px solid var(--border); font-weight: 500; }
-        .table-perf tr.tr-total td { font-weight: 700; background: var(--bg3); border-bottom: none; }
+        .stats-badge {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* Barre de recherche et filtres */
+        .controls-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        @media (min-width: 768px) {
+            .controls-container {
+                flex-direction: row;
+                justify-content: space-between;
+            }
+        }
+
+        #search-input {
+            width: 100%;
+            max-width: 400px;
+            padding: 12px 20px;
+            font-size: 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 25px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        #search-input:focus {
+            border-color: var(--primary-color);
+        }
+
+        /* Groupe de boutons de filtrage */
+        .filter-group {
+            display: flex;
+            background-color: #e2e8f0;
+            padding: 4px;
+            border-radius: 25px;
+            gap: 2px;
+        }
+
+        .filter-btn {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            padding: 8px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .filter-btn:hover:not(.active) {
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .filter-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Statut de chargement et messages d'erreur/synchro */
+        #status-message {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 20px;
+            color: var(--text-light);
+        }
+
+        #sync-status {
+            text-align: center;
+            font-size: 13px;
+            margin-bottom: 15px;
+            color: #10b981;
+            font-weight: 600;
+            height: 20px;
+        }
+
+        .error {
+            color: #ef4444 !important;
+        }
+
+        /* Grille des joueurs */
+        .players-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        /* Carte Joueur */
+        .player-card {
+            background-color: var(--card-background);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .player-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Style quand la carte est cochée */
+        .player-card.checked {
+            border-color: var(--primary-color);
+            background-color: #eff6ff;
+        }
+
+        /* Checkbox en haut à gauche */
+        .player-checkbox-container {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 2;
+        }
+
+        .player-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--primary-color);
+        }
+
+        .player-pseudo {
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-top: 15px;
+            margin-bottom: 12px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 5px;
+            word-break: break-all;
+        }
+
+        .player-info {
+            font-size: 14px;
+            color: var(--text-light);
+            margin-bottom: 6px;
+        }
+
+        .player-info strong {
+            color: var(--text-color);
+        }
+
+        /* Badge pour le classement en haut à droite */
+        .rank-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background-color: #f1f5f9;
+            color: var(--text-color);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+            border: 1px solid var(--border-color);
+        }
     </style>
 </head>
 <body>
 
-<div class="header">
-    <div class="header-title">
-        <div class="logo">Empire<em>Immo</em></div>
-    </div>
-    <div class="tabs">
-        <button class="tab-btn active" id="tab-btn-1" onclick="switchTab(1)"><span class="tab-icon">🏗️</span> Construire</button>
-        <button class="tab-btn" id="tab-btn-2" onclick="switchTab(2)"><span class="tab-icon">🏠</span> Acheter</button>
-        <button class="tab-btn" id="tab-btn-3" onclick="switchTab(3)"><span class="tab-icon">⚖️</span> Guide</button>
-        <button class="tab-btn" id="tab-btn-4" onclick="switchTab(4)"><span class="tab-icon">👥</span> Alliance</button>
-    </div>
-</div>
-
-<div class="tab-content active" id="tab-content-1">
-    <div class="panel">
-        <div class="panel-title">🔨 Simulation de Construction</div>
-        <div class="grid-2">
-            <div class="form-group">
-                <label>Type d'immeuble</label>
-                <div class="input-wrapper">
-                    <select id="cType" onchange="calcC()"></select>
-                </div>
+    <div class="container">
+        <header>
+            <h1 id="api-title">Chargement...</h1>
+            <p id="api-description"></p>
+            <div id="api-stats" style="display: none;">
+                <span class="stats-badge" id="player-count">0 joueurs</span>
             </div>
-            <div class="form-group">
-                <label>Prix Terrain (m²)</label>
-                <div class="input-wrapper has-unit">
-                    <input type="number" id="cTerrain" value="2500" oninput="calcC()">
-                    <span class="unit">€</span>
-                </div>
+        </header>
+
+        <div id="sync-status"></div>
+
+        <div class="controls-container">
+            <input type="text" id="search-input" placeholder="Rechercher un pseudo..." disabled>
+            
+            <div class="filter-group">
+                <button id="btn-all" class="filter-btn active" data-filter="all">Tous</button>
+                <button id="btn-checked" class="filter-btn" data-filter="checked">Cochés</button>
+                <button id="btn-unchecked" class="filter-btn" data-filter="unchecked">Non cochés</button>
             </div>
         </div>
-        <button class="btn-calc" onclick="genererOppsC()">Trouver les meilleures opportunités</button>
-    </div>
-    <div class="bar-results" id="barResults1">
-        <div class="search-wrap"><input type="text" id="search1" placeholder="Filtrer par ville..." oninput="filtrer1()"></div>
-        <div class="cpt-results" id="cpt1">0 trouvé(s)</div>
-    </div>
-    <div class="cards-list" id="list1"></div>
-</div>
 
-<div class="tab-content" id="tab-content-2">
-    <div class="panel">
-        <div class="panel-title">🔑 Simulation d'Achat Ancien</div>
-        <div class="grid-2">
-            <div class="form-group">
-                <label>Type d'immeuble</label>
-                <div class="input-wrapper">
-                    <select id="aType" onchange="calcA()"></select>
-                </div>
+        <div id="status-message">Connexion au proxy et récupération des joueurs...</div>
+
+        <div class="players-grid" id="players-container">
             </div>
-            <div class="form-group">
-                <label>Décote Appliquée</label>
-                <div class="input-wrapper has-unit">
-                    <input type="number" id="aDecote" value="15" oninput="calcA()">
-                    <span class="unit">%</span>
-                </div>
-            </div>
-        </div>
-        <button class="btn-calc" onclick="genererOppsA()">Trouver les meilleures opportunités</button>
-    </div>
-    <div class="bar-results" id="barResults2">
-        <div class="search-wrap"><input type="text" id="search2" placeholder="Filtrer par ville..." oninput="filtrer2()"></div>
-        <div class="cpt-results" id="cpt2">0 trouvé(s)</div>
-    </div>
-    <div class="cards-list" id="list2"></div>
-</div>
-
-<div class="tab-content" id="tab-content-3">
-    <div class="bar-results visible" id="barResults3" style="background:var(--bg2);">
-        <div class="search-wrap"><input type="text" id="search3" placeholder="Rechercher une ville..." oninput="filtrer3()"></div>
-        <div class="cpt-results" id="cpt3">0 villes</div>
-    </div>
-    <div class="cards-list" id="list3"></div>
-</div>
-
-<div class="tab-content" id="tab-content-4">
-    <div class="status-bar" style="background: var(--panel-dark); color: #fff; border-radius: var(--r-sm); margin: 10px 12px 5px; padding: 12px 14px; min-height: auto; flex-direction: column; align-items: stretch; gap: 8px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span id="allianceStatus" style="font-weight: 600; font-size: 13px;">Connexion cloud...</span>
-            <button class="btn-calc" onclick="chargerSuiviAlliance()" style="background: var(--green); height: 28px; padding: 0 10px; font-size: 11px; width: auto;">
-                🔄 Synchroniser
-            </button>
-        </div>
-        <div id="allianceMeta" style="font-size: 11px; color: var(--text-inv2);">Initialisation...</div>
     </div>
 
-    <div class="bar-results visible" style="margin: 5px 12px;">
-        <div class="search-wrap">
-            <input type="text" id="filtreAlliance" placeholder="Rechercher un pseudo, une ville..." oninput="afficherJoueursAlliance()" autocomplete="off">
-        </div>
-        <div class="cpt-results" id="cptAlliance">0 joueurs</div>
-    </div>
-
-    <div class="cards-list" id="listAlliance" style="padding-top: 5px;"></div>
-</div>
-
-<div class="modal-overlay" id="modalOverlay" onclick="fermerModal(event)">
-    <div class="modal-card">
-        <div class="modal-header">
-            <span id="mTitle">Détails de l'opportunité</span>
-            <span style="cursor:pointer; font-size:22px; line-height:1;" onclick="fermerModal()">&times;</span>
-        </div>
-        <div class="modal-body" id="mBody"></div>
-    </div>
-</div>
-
-<script>
-    // DATA APPLICATIVE (Statique)
-    const types = {
-        "Studio": { loyer: 42, charges: 8, assurance: 1.2, taxe: 4, structures: 1250 },
-        "T2": { loyer: 68, charges: 12, assurance: 1.8, taxe: 6, structures: 1850 },
-        "T3": { loyer: 95, charges: 15, assurance: 2.5, taxe: 8, structures: 2400 },
-        "Immeuble": { loyer: 280, charges: 45, assurance: 7.0, taxe: 24, structures: 7200 }
-    };
-
-    const villes = [
-        { nom: "Capitoria", multi: 1.35, prixAncien: 4200 },
-        { nom: "Holdenor", multi: 1.20, prixAncien: 3600 },
-        { nom: "Regentor", multi: 1.10, prixAncien: 3100 },
-        { nom: "Baselis",  multi: 0.95, prixAncien: 2600 },
-        { nom: "Pionera",  multi: 0.80, prixAncien: 2100 },
-        { nom: "Expanseia",multi: 0.65, prixAncien: 1600 }
-    ];
-
-    // CONFIGURATION CLOUD ALLIANCE (Votre ID npoint configuré)
-    const NPOINT_URL = 'https://api.npoint.io/71a1ae63668c41e186f8';
-    let joueursMonde = []; 
-    let suiviCloud = {};   
-    let filtreSuiviSeul = false;
-
-    let tabActif = 1;
-    let opps1 = [], opps2 = [];
-    let oppOuverte = null;
-
-    // INITIALISATION
-    window.addEventListener('DOMContentLoaded', () => {
-        const sc = document.getElementById('cType');
-        const sa = document.getElementById('aType');
-        Object.keys(types).forEach(k => {
-            sc.options.add(new Option(k, k));
-            sa.options.add(new Option(k, k));
-        });
-        filtrer3();
-    });
-
-    function switchTab(num) {
-        tabActif = num;
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    <script>
+        const proxyUrl = "https://mon-proxy-empire.yangtiradol.workers.dev/?url=";
+        const apiUrl = "https://monde8.empireimmo.com/api/players.json";
+        const targetUrl = proxyUrl + encodeURIComponent(apiUrl);
         
-        document.getElementById(`tab-btn-${num}`).classList.add('active');
-        document.getElementById(`tab-content-${num}`).classList.add('active');
-        
-        document.getElementById('barResults1').classList.toggle('visible', num === 1 && opps1.length > 0);
-        document.getElementById('barResults2').classList.toggle('visible', num === 2 && opps2.length > 0);
-        document.getElementById('barResults3').classList.toggle('visible', num === 3);
-        
-        if (num === 4) {
-            initialiserAlliance();
-        }
-    }
+        // URL de sauvegarde npoint.io
+        const npointUrl = "https://api.npoint.io/3ef3a804286023b143dd";
 
-    // FONCTIONS COEUR LOGIQUE (TABS 1 & 2)
-    function calcC() { if(opps1.length>0) genererOppsC(); }
-    function calcA() { if(opps2.length>0) genererOppsA(); }
-
-    function genererOppsC() {
-        const type = document.getElementById('cType').value;
-        const pTerrain = parseFloat(document.getElementById('cTerrain').value) || 0;
-        const t = types[type];
+        let allPlayers = [];
         
-        opps1 = villes.map(v => {
-            const coutM2 = pTerrain + t.structures;
-            const investTotal = coutM2 * v.multi * 1.1; // Frais inclus
-            const loyerJ = t.loyer * v.multi;
-            const cfNet = loyerJ - (t.charges + t.assurance + t.taxe);
-            const rdt = ((cfNet * 365) / investTotal) * 100;
-            return { ville: v.nom, type, invest: investTotal, cfNet, rdt, qteMax: Math.floor(100000 / coutM2), brut: {loyer:loyerJ, charge:t.charges, assurance:t.assurance, impot:t.taxe} };
-        }).sort((a,b) => b.rdt - a.rdt);
+        // Stockage des pseudos cochés
+        let checkedPlayers = new Set();
         
-        document.getElementById('barResults1').classList.add('visible');
-        filtrer1();
-    }
+        // Filtre d'affichage actuel : 'all', 'checked', ou 'unchecked'
+        let currentFilter = 'all'; 
 
-    function genererOppsA() {
-        const type = document.getElementById('aType').value;
-        const decote = parseFloat(document.getElementById('aDecote').value) || 0;
-        const t = types[type];
-        
-        opps2 = villes.map(v => {
-            const prixFini = v.prixAncien * (1 - (decote/100));
-            const investTotal = prixFini * 1.08;
-            const loyerJ = t.loyer * v.multi * 0.95; // Légère décote loyer ancien
-            const cfNet = loyerJ - (t.charges * 1.1 + t.assurance + t.taxe);
-            const rdt = ((cfNet * 365) / investTotal) * 100;
-            return { ville: v.nom, type, invest: investTotal, cfNet, rdt, qteMax: 1, brut: {loyer:loyerJ, charge:t.charges*1.1, assurance:t.assurance, impot:t.taxe} };
-        }).sort((a,b) => b.rdt - a.rdt);
+        // Éléments du DOM
+        const playersContainer = document.getElementById('players-container');
+        const statusMessage = document.getElementById('status-message');
+        const syncStatus = document.getElementById('sync-status');
+        const searchInput = document.getElementById('search-input');
+        const apiTitle = document.getElementById('api-title');
+        const apiDescription = document.getElementById('api-description');
+        const apiStats = document.getElementById('api-stats');
+        const playerCount = document.getElementById('player-count');
+        const filterButtons = document.querySelectorAll('.filter-btn');
 
-        document.getElementById('barResults2').classList.add('visible');
-        filtrer2();
-    }
-
-    // RENDER DES LISTES ET FILTRES (1, 2, 3)
-    function filtrer1() {
-        const q = document.getElementById('search1').value.toLowerCase();
-        const f = opps1.filter(o => o.ville.toLowerCase().includes(q));
-        document.getElementById('cpt1').innerText = `${f.length} ville(s)`;
-        
-        let html = '';
-        f.forEach((o, i) => {
-            html += `<div class="card" onclick="ouvrirModal(1, ${opps1.indexOf(o)})">
-                <div class="card-main">
-                    <div>
-                        <div class="card-name">${o.ville} <span class="card-type">${o.type}</span></div>
-                        <div class="card-type">Invest. estimé : ${fmt(o.invest)} €</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <div style="font-size:14px; font-weight:800; color:var(--green)">+${o.rdt.toFixed(2)}%</div>
-                        <div class="card-type">${fmtS(o.cfNet,'€/j')}</div>
-                    </div>
-                </div>
-            </div>`;
-        });
-        document.getElementById('list1').innerHTML = html;
-    }
-
-    function filtrer2() {
-        const q = document.getElementById('search2').value.toLowerCase();
-        const f = opps2.filter(o => o.ville.toLowerCase().includes(q));
-        document.getElementById('cpt2').innerText = `${f.length} ville(s)`;
-        
-        let html = '';
-        f.forEach((o, i) => {
-            html += `<div class="card" onclick="ouvrirModal(2, ${opps2.indexOf(o)})">
-                <div class="card-main">
-                    <div>
-                        <div class="card-name">${o.ville} <span class="card-type">${o.type}</span></div>
-                        <div class="card-type">Prix décoaté : ${fmt(o.invest)} €</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <div style="font-size:14px; font-weight:800; color:var(--blue)">+${o.rdt.toFixed(2)}%</div>
-                        <div class="card-type">${fmtS(o.cfNet,'€/j')}</div>
-                    </div>
-                </div>
-            </div>`;
-        });
-        document.getElementById('list2').innerHTML = html;
-    }
-
-    function filtrer3() {
-        const q = document.getElementById('search3').value.toLowerCase();
-        const f = villes.filter(v => v.nom.toLowerCase().includes(q));
-        document.getElementById('cpt3').innerText = `${f.length} ville(s)`;
-        
-        let html = '';
-        f.forEach(v => {
-            html += `<div class="card" style="cursor:default;">
-                <div class="card-main">
-                    <div>
-                        <div class="card-name">📍 ${v.nom}</div>
-                        <div class="card-type">Prix Moyen Ancien : ${fmt(v.prixAncien)} €/m²</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <div style="font-size:13px; font-weight:700; color:var(--panel-dark)">x${v.multi.toFixed(2)}</div>
-                        <div class="card-type">Coeff. Économique</div>
-                    </div>
-                </div>
-            </div>`;
-        });
-        document.getElementById('list3').innerHTML = html;
-    }
-
-    // LOGIQUE LOGISTIQUE DE L'ONGLET 4 (ALLIANCE SYNCHRONISÉE CLOUD)
-    async function initialiserAlliance() {
-        const statusLbl = document.getElementById('allianceStatus');
-        const metaLbl = document.getElementById('allianceMeta');
-        
-        if (joueursMonde.length === 0) {
-            statusLbl.innerText = "Chargement de la liste du Monde 8...";
+        // Étape 1 : Charger d'abord les sauvegardes sur npoint.io, puis charger l'API EmpireImmo
+        async function init() {
+            showSyncMessage("Chargement des sauvegardes npoint.io...", "#64748b");
             try {
-                const res = await fetch('./players.json');
-                const data = await res.json();
-                joueursMonde = data.joueurs || [];
-                metaLbl.innerText = `${joueursMonde.length} joueurs chargés depuis players.json.`;
+                // On récupère les joueurs déjà cochés enregistrés précédemment
+                const savedResponse = await fetch(npointUrl);
+                if (savedResponse.ok) {
+                    const savedData = await savedResponse.json();
+                    // Si le fichier contient un tableau de pseudos, on l'ajoute au Set
+                    if (savedData && Array.isArray(savedData.pseudos_coches)) {
+                        savedData.pseudos_coches.forEach(pseudo => checkedPlayers.add(pseudo));
+                        showSyncMessage(`✓ ${checkedPlayers.size} joueur(s) synchronisé(s) depuis npoint.io`, "#10b981");
+                    }
+                }
             } catch (e) {
-                statusLbl.innerText = "❌ Erreur players.json";
-                metaLbl.innerText = "Vérifiez que le fichier players.json est bien présent sur votre dépôt.";
-                return;
+                console.warn("Impossible de charger les anciennes données de npoint.io (fichier peut-être vide).", e);
+                showSyncMessage("Aucune sauvegarde trouvée sur npoint.io. Prêt.", "#f59e0b");
+            }
+
+            // On enchaîne avec la récupération des joueurs de l'API
+            fetchPlayers();
+        }
+
+        // Récupération des données d'Empire Immo via le proxy
+        async function fetchPlayers() {
+            try {
+                const response = await fetch(targetUrl);
+                if (!response.ok) throw new Error(`Erreur HTTP ! Statut : ${response.status}`);
+
+                const data = await response.json();
+                
+                apiTitle.textContent = data.nom || "Empire Immo";
+                apiDescription.textContent = data.description || "";
+                if (data.nb_joueurs) {
+                    playerCount.textContent = `${data.nb_joueurs.toLocaleString()} joueurs`;
+                    apiStats.style.display = 'block';
+                }
+
+                let rawPlayers = data.joueurs || [];
+
+                // Tri par points décroissant
+                allPlayers = rawPlayers.sort((a, b) => {
+                    const pointsA = a.points ?? 0;
+                    const pointsB = b.points ?? 0;
+                    return pointsB - pointsA;
+                });
+
+                if (allPlayers.length === 0) {
+                    statusMessage.textContent = "Aucun joueur trouvé dans le fichier.";
+                    return;
+                }
+
+                statusMessage.style.display = 'none';
+                searchInput.disabled = false;
+
+                updateDisplay();
+
+            } catch (error) {
+                console.error("Erreur lors du chargement :", error);
+                apiTitle.textContent = "Erreur de chargement";
+                statusMessage.textContent = "Impossible de récupérer les données de l'API joueurs.";
+                statusMessage.classList.add('error');
             }
         }
-        await chargerSuiviAlliance();
-    }
 
-    async function chargerSuiviAlliance() {
-        const statusLbl = document.getElementById('allianceStatus');
-        statusLbl.innerText = "🔄 Synchronisation cloud...";
-        try {
-            const res = await fetch(NPOINT_URL);
-            if (!res.ok) throw new Error();
-            suiviCloud = await res.json();
-            if (!suiviCloud || Array.isArray(suiviCloud)) suiviCloud = {};
+        // Sauvegarde de la liste sur npoint.io
+async function saveToNpoint() {
+    showSyncMessage("Sauvegarde en cours sur npoint.io...", "#3b82f6");
+    try {
+        // On prépare l'objet JSON à envoyer
+        const dataToSave = {
+            derniere_mise_a_jour: new Date().toISOString(),
+            total_coches: checkedPlayers.size,
+            pseudos_coches: Array.from(checkedPlayers) // Convertit le Set en Tableau JSON
+        };
+
+        const response = await fetch(npointUrl, {
+            method: 'PUT', // Remplacé POST par PUT pour npoint.io
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(dataToSave)
+        });
+
+        if (!response.ok) throw new Error("Erreur lors de l'envoi vers npoint");
+        
+        showSyncMessage("✓ Sauvegarde réussie sur npoint.io !", "#10b981");
+    } catch (error) {
+        console.error("Erreur de sauvegarde npoint.io :", error);
+        showSyncMessage("✗ Erreur de sauvegarde sur npoint.io", "#ef4444");
+    }
+}
+
+        // Petit outil pour afficher un texte d'état de synchronisation en haut de l'écran
+        function showSyncMessage(text, color) {
+            syncStatus.textContent = text;
+            syncStatus.style.color = color;
+        }
+
+        // Gère le filtrage d'affichage (recherche + boutons)
+        function updateDisplay() {
+            const searchTerm = searchInput.value.toLowerCase().trim();
             
-            statusLbl.innerText = "✅ Connecté au Cloud (Alliance)";
-            afficherJoueursAlliance();
-        } catch (e) {
-            statusLbl.innerText = "❌ Échec de la connexion cloud";
-        }
-    }
+            let processedPlayers = allPlayers.filter(player => {
+                const pseudo = (player.pseudo || '').toLowerCase();
+                const matchesSearch = pseudo.includes(searchTerm);
 
-    async function sauvegarderSuiviAlliance() {
-        const statusLbl = document.getElementById('allianceStatus');
-        statusLbl.innerText = "💾 Envoi au cloud...";
-        try {
-            await fetch(NPOINT_URL, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(suiviCloud)
+                let matchesCategory = true;
+                const isChecked = checkedPlayers.has(player.pseudo);
+                
+                if (currentFilter === 'checked') {
+                    matchesCategory = isChecked;
+                } else if (currentFilter === 'unchecked') {
+                    matchesCategory = !isChecked;
+                }
+
+                return matchesSearch && matchesCategory;
             });
-            statusLbl.innerText = "✅ Cloud mis à jour !";
-        } catch (e) {
-            statusLbl.innerText = "❌ Erreur de sauvegarde cloud";
-        }
-    }
 
-    function toggleFiltreSuivi() {
-        filtreSuiviSeul = !filtreSuiviSeul;
-        afficherJoueursAlliance();
-    }
+            renderPlayers(processedPlayers);
+        }
 
-    function afficherJoueursAlliance() {
-        const query = document.getElementById('filtreAlliance').value.toLowerCase().trim();
-        const container = document.getElementById('listAlliance');
-        const cpt = document.getElementById('cptAlliance');
-        
-        let listeFiltrée = [...joueursMonde].map(j => ({ ...j, coche: !!suiviCloud[j.pseudo] }));
-        
-        if (filtreSuiviSeul) {
-            listeFiltrée = listeFiltrée.filter(j => j.coche);
-        }
-        if (query) {
-            listeFiltrée = listeFiltrée.filter(j => 
-                j.pseudo.toLowerCase().includes(query) || j.ville.toLowerCase().includes(query)
-            );
-        }
-        
-        listeFiltrée.sort((a, b) => {
-            if (a.coche !== b.coche) return b.coche - a.coche;
-            return a.classement - b.classement;
-        });
-        
-        const maxAffichage = query || filtreSuiviSeul ? listeFiltrée.length : 80;
-        const aAfficher = listeFiltrée.slice(0, maxAffichage);
-        
-        cpt.innerHTML = `<b>${listeFiltrée.length}</b> joueur(s)`;
-        
-        let html = `
-            <button onclick="toggleFiltreSuivi()" class="btn-calc" style="width:100%; margin-bottom:12px; background:${filtreSuiviSeul ? 'var(--blue)' : 'var(--input-dark)'}; font-size:11px; height:34px; border:1px solid var(--border);">
-                ${filtreSuiviSeul ? "👥 Afficher tous les joueurs" : "⭐ Filtrer : Voir uniquement les cochés"}
-            </button>
-        `;
-        
-        if (aAfficher.length === 0) {
-            container.innerHTML = html + `<div style="text-align:center; padding:20px; font-size:13px; color:var(--text-3);">Aucun joueur trouvé.</div>`;
-            return;
-        }
-        
-        aAfficher.forEach(j => {
-            html += `
-                <div class="alliance-card ${j.coche ? 'checked' : ''}">
-                    <div class="alliance-info">
-                        <div class="alliance-name">${j.pseudo} <span style="font-family:'DM Mono'; font-size:11px; color:var(--text-2); font-weight:400;">(Niv.${j.niveau})</span></div>
-                        <div class="alliance-sub">🏆 Rang #${j.classement} • 📍 ${j.ville} • 📊 ${new Intl.NumberFormat('fr-FR').format(j.points)} pts</div>
+        // Génère le HTML pour les cartes
+        function renderPlayers(players) {
+            playersContainer.innerHTML = "";
+
+            players.forEach(player => {
+                const isChecked = checkedPlayers.has(player.pseudo);
+                const card = document.createElement('div');
+                card.className = `player-card ${isChecked ? 'checked' : ''}`;
+
+                const formattedPoints = player.points !== undefined ? player.points.toLocaleString() : '0';
+
+                card.innerHTML = `
+                    <div class="player-checkbox-container">
+                        <input type="checkbox" class="player-checkbox" ${isChecked ? 'checked' : ''} data-pseudo="${player.pseudo}">
                     </div>
-                    <button class="alliance-check-btn" onclick="toggleJoueurCloud('${j.pseudo.replace(/'/g, "\\'")}')">✓</button>
-                </div>
-            `;
+                    <div class="rank-badge">#${player.classement || '-'}</div>
+                    <div class="player-pseudo">${player.pseudo || 'Inconnu'}</div>
+                    <div class="player-info"><strong>Niveau :</strong> ${player.niveau ?? '-'}</div>
+                    <div class="player-info"><strong>Points :</strong> ${formattedPoints}</div>
+                    <div class="player-info"><strong>Ville :</strong> ${player.ville || '-'}</div>
+                `;
+                
+                playersContainer.appendChild(card);
+            });
+
+            // Événement au clic des cases à cocher
+            document.querySelectorAll('.player-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const pseudo = e.target.dataset.pseudo;
+                    const card = e.target.closest('.player-card');
+                    
+                    if (e.target.checked) {
+                        checkedPlayers.add(pseudo);
+                        card.classList.add('checked');
+                    } else {
+                        checkedPlayers.delete(pseudo);
+                        card.classList.remove('checked');
+                    }
+
+                    // On envoie la mise à jour à npoint.io immédiatement
+                    saveToNpoint();
+
+                    if (currentFilter !== 'all') {
+                        setTimeout(updateDisplay, 250);
+                    }
+                });
+            });
+
+            if (players.length === 0) {
+                playersContainer.innerHTML = `
+                    <p style="grid-column: 1/-1; text-align: center; color: var(--text-light); margin-top: 20px;">
+                        Aucun résultat disponible.
+                    </p>`;
+            }
+        }
+
+        // Événement recherche
+        searchInput.addEventListener('input', updateDisplay);
+
+        // Événements boutons filtres
+        filterButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                currentFilter = e.target.dataset.filter;
+                updateDisplay();
+            });
         });
-        
-        if (listeFiltrée.length > maxAffichage) {
-            html += `<div style="text-align:center; font-size:11px; color:var(--text-3); padding:10px 0;">+ ${listeFiltrée.length - maxAffichage} autres joueurs. Utilisez la barre de recherche pour filtrer précisément.</div>`;
-        }
-        container.innerHTML = html;
-    }
 
-    async function toggleJoueurCloud(pseudo) {
-        if (suiviCloud[pseudo]) {
-            delete suiviCloud[pseudo];
-        } else {
-            suiviCloud[pseudo] = true;
-        }
-        afficherJoueursAlliance(); 
-        await sauvegarderSuiviAlliance(); 
-    }
-
-    // MODAL ET VISUALISATION DES FICHES IMMO
-    function ouvrirModal(type, index) {
-        const o1 = type === 1 ? opps1[index] : opps2[index];
-        oppOuverte = o1;
-        const o2 = o1;
-        
-        document.getElementById('mTitle').innerText = `${o1.ville} — Fiche Technique`;
-        const cfCls = o2.cfNet >= 0 ? 'green' : 'red';
-        
-        let html = `
-        <div style="margin-bottom:14px;">
-            <div style="font-size:16px; font-weight:800; color:var(--panel-dark)">${o1.type}</div>
-            <div style="font-size:11px; color:var(--text-2)">Analyse basée sur le coefficient d'attractivité économique local.</div>
-        </div>
-        <div style="background:var(--bg); padding:12px; border-radius:var(--r-sm); display:flex; justify-content:space-between; margin-bottom:16px;">
-            <div><span style="font-size:11px; font-weight:700; color:var(--text-2); text-transform:uppercase;">Rendement annuel</span><div style="font-size:18px; font-weight:800; color:var(--blue)">+${o1.rdt.toFixed(2)}%</div></div>
-            <div style="text-align:right;"><span style="font-size:11px; font-weight:700; color:var(--text-2); text-transform:uppercase;">Coût Total</span><div style="font-size:18px; font-weight:800; color:var(--text)">${fmt(o1.invest)} €</div></div>
-        </div>
-        <div>
-            <span style="font-size:11px; font-weight:700; color:var(--text-2); text-transform:uppercase;">Flux financiers prévisionnels</span>
-            <table class="table-perf">
-                <thead><tr><th>Poste</th><th>Par unité</th><th>Maximum (${o1.qteMax} u.)</th></tr></thead>
-                <tbody>
-                    <tr><td>Loyers perçus</td><td>+${fmt(o2.brut.loyer)} €/j</td><td>+${fmt(o2.brut.loyer*o1.qteMax)} €/j</td></tr>
-                    <tr><td>Charges</td><td>−${fmt(o2.brut.charge)} €/j</td><td>−${fmt(o2.brut.charge*o1.qteMax)} €/j</td></tr>
-                    <tr><td>Assurance (0.26%/mois)</td><td>−${fmt(o2.brut.assurance)} €/j</td><td>−${fmt(o2.brut.assurance*o1.qteMax)} €/j</td></tr>
-                    <tr><td>Impôts</td><td>−${fmt(o2.brut.impot)} €/j</td><td>−${fmt(o2.brut.impot*o1.qteMax)} €/j</td></tr>
-                    <tr class="tr-total"><td>Cashflow net</td><td><span class="${cfCls}">${fmtS(o2.cfNet,' €/j')}</span></td><td><span class="${cfCls}">${fmtS(o2.cfNet*o1.qteMax,' €/j')}</span></td></tr>
-                </tbody>
-            </table>
-        </div>`;
-        document.getElementById('mBody').innerHTML = html;
-        document.getElementById('modalOverlay').classList.add('open');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function fermerModal(e) {
-        if (e && e.target !== document.getElementById('modalOverlay')) return;
-        document.getElementById('modalOverlay').classList.remove('open');
-        document.body.style.overflow = '';
-        oppOuverte = null;
-    }
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') fermerModal(); });
-
-    // UTILITAIRES FORMATTAGE
-    function fmt(v) { return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(v); }
-    function fmtS(v, u) { return (v >= 0 ? '+' : '') + new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(v) + u; }
-</script>
-
+        // Démarrage de l'application
+        init();
+    </script>
 </body>
 </html>
