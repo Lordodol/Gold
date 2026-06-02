@@ -258,20 +258,14 @@
     <script>
         const proxyUrl = "https://mon-proxy-empire.yangtiradol.workers.dev/?url=";
         const apiUrl = "https://monde8.empireimmo.com/api/players.json";
-        const targetUrl = proxyUrl + encodeURIComponent(apiUrl);
-        
-        // URL de sauvegarde npoint.io
         const npointUrl = "https://api.npoint.io/3ef3a804286023b143dd";
 
+        const targetApiUrl = proxyUrl + encodeURIComponent(apiUrl);
+
         let allPlayers = [];
-        
-        // Stockage des pseudos cochés
         let checkedPlayers = new Set();
-        
-        // Filtre d'affichage actuel : 'all', 'checked', ou 'unchecked'
         let currentFilter = 'all'; 
 
-        // Éléments du DOM
         const playersContainer = document.getElementById('players-container');
         const statusMessage = document.getElementById('status-message');
         const syncStatus = document.getElementById('sync-status');
@@ -282,33 +276,35 @@
         const playerCount = document.getElementById('player-count');
         const filterButtons = document.querySelectorAll('.filter-btn');
 
-        // Étape 1 : Charger d'abord les sauvegardes sur npoint.io, puis charger l'API EmpireImmo
+        // Étape 1 : Charger directement la sauvegarde npoint.io (sans proxy)
         async function init() {
             showSyncMessage("Chargement des sauvegardes npoint.io...", "#64748b");
             try {
-                // On récupère les joueurs déjà cochés enregistrés précédemment
                 const savedResponse = await fetch(npointUrl);
                 if (savedResponse.ok) {
                     const savedData = await savedResponse.json();
-                    // Si le fichier contient un tableau de pseudos, on l'ajoute au Set
-                    if (savedData && Array.isArray(savedData.pseudos_coches)) {
+                    // Lecture sécurisée de la clé
+                    if (savedData && savedData.pseudos_coches && Array.isArray(savedData.pseudos_coches)) {
                         savedData.pseudos_coches.forEach(pseudo => checkedPlayers.add(pseudo));
                         showSyncMessage(`✓ ${checkedPlayers.size} joueur(s) synchronisé(s) depuis npoint.io`, "#10b981");
+                    } else {
+                        showSyncMessage("Prêt (base npoint vide).", "#f59e0b");
                     }
+                } else {
+                    showSyncMessage("Prêt (aucune sauvegarde trouvée).", "#f59e0b");
                 }
             } catch (e) {
-                console.warn("Impossible de charger les anciennes données de npoint.io (fichier peut-être vide).", e);
-                showSyncMessage("Aucune sauvegarde trouvée sur npoint.io. Prêt.", "#f59e0b");
+                console.warn("Fichier vide ou non trouvé au premier démarrage.", e);
+                showSyncMessage("Prêt (base npoint prête).", "#f59e0b");
             }
 
-            // On enchaîne avec la récupération des joueurs de l'API
             fetchPlayers();
         }
 
         // Récupération des données d'Empire Immo via le proxy
         async function fetchPlayers() {
             try {
-                const response = await fetch(targetUrl);
+                const response = await fetch(targetApiUrl);
                 if (!response.ok) throw new Error(`Erreur HTTP ! Statut : ${response.status}`);
 
                 const data = await response.json();
@@ -322,7 +318,6 @@
 
                 let rawPlayers = data.joueurs || [];
 
-                // Tri par points décroissant
                 allPlayers = rawPlayers.sort((a, b) => {
                     const pointsA = a.points ?? 0;
                     const pointsB = b.points ?? 0;
@@ -347,41 +342,39 @@
             }
         }
 
-        // Sauvegarde de la liste sur npoint.io
-async function saveToNpoint() {
-    showSyncMessage("Sauvegarde en cours sur npoint.io...", "#3b82f6");
-    try {
-        // On prépare l'objet JSON à envoyer
-        const dataToSave = {
-            derniere_mise_a_jour: new Date().toISOString(),
-            total_coches: checkedPlayers.size,
-            pseudos_coches: Array.from(checkedPlayers) // Convertit le Set en Tableau JSON
-        };
+        // Sauvegarde directe en PUT sur npoint (sans passer par Cloudflare)
+        async function saveToNpoint() {
+            showSyncMessage("Sauvegarde en cours sur npoint.io...", "#3b82f6");
+            try {
+                const dataToSave = {
+                    derniere_mise_a_jour: new Date().toISOString(),
+                    total_coches: checkedPlayers.size,
+                    pseudos_coches: Array.from(checkedPlayers)
+                };
 
-        const response = await fetch(npointUrl, {
-            method: 'PUT', // Remplacé POST par PUT pour npoint.io
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(dataToSave)
-        });
+                const response = await fetch(npointUrl, {
+                    method: 'PUT', 
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(dataToSave)
+                });
 
-        if (!response.ok) throw new Error("Erreur lors de l'envoi vers npoint");
-        
-        showSyncMessage("✓ Sauvegarde réussie sur npoint.io !", "#10b981");
-    } catch (error) {
-        console.error("Erreur de sauvegarde npoint.io :", error);
-        showSyncMessage("✗ Erreur de sauvegarde sur npoint.io", "#ef4444");
-    }
-}
+                if (!response.ok) throw new Error("Erreur lors de la mise à jour réseau");
+                
+                // La sauvegarde est validée avec succès par le serveur npoint
+                showSyncMessage("✓ Sauvegarde réussie sur npoint.io !", "#10b981");
+            } catch (error) {
+                console.error("Erreur de sauvegarde :", error);
+                showSyncMessage("✗ Erreur de sauvegarde sur npoint.io", "#ef4444");
+            }
+        }
 
-        // Petit outil pour afficher un texte d'état de synchronisation en haut de l'écran
         function showSyncMessage(text, color) {
             syncStatus.textContent = text;
             syncStatus.style.color = color;
         }
 
-        // Gère le filtrage d'affichage (recherche + boutons)
         function updateDisplay() {
             const searchTerm = searchInput.value.toLowerCase().trim();
             
@@ -404,7 +397,6 @@ async function saveToNpoint() {
             renderPlayers(processedPlayers);
         }
 
-        // Génère le HTML pour les cartes
         function renderPlayers(players) {
             playersContainer.innerHTML = "";
 
@@ -429,7 +421,6 @@ async function saveToNpoint() {
                 playersContainer.appendChild(card);
             });
 
-            // Événement au clic des cases à cocher
             document.querySelectorAll('.player-checkbox').forEach(checkbox => {
                 checkbox.addEventListener('change', (e) => {
                     const pseudo = e.target.dataset.pseudo;
@@ -443,7 +434,6 @@ async function saveToNpoint() {
                         card.classList.remove('checked');
                     }
 
-                    // On envoie la mise à jour à npoint.io immédiatement
                     saveToNpoint();
 
                     if (currentFilter !== 'all') {
@@ -460,10 +450,8 @@ async function saveToNpoint() {
             }
         }
 
-        // Événement recherche
         searchInput.addEventListener('input', updateDisplay);
 
-        // Événements boutons filtres
         filterButtons.forEach(button => {
             button.addEventListener('click', (e) => {
                 filterButtons.forEach(btn => btn.classList.remove('active'));
@@ -473,7 +461,6 @@ async function saveToNpoint() {
             });
         });
 
-        // Démarrage de l'application
         init();
     </script>
 </body>
