@@ -361,14 +361,22 @@
         const type = modelTypeSelect.value;
         if (n < 2) { currentModel = { type: 'none', coefficients: {} }; return; }
 
-        // ---- LINÉAIRE : y = ax + b ----
+        // ---- LINÉAIRE : y = ax + b (normalisé pour éviter overflow) ----
         if (type === 'linear') {
+            const xMean = dataPoints.reduce((s, p) => s + p.x, 0) / n;
+            const xStd  = Math.sqrt(dataPoints.reduce((s, p) => s + (p.x - xMean)**2, 0) / n) || 1;
             let sx = 0, sy = 0, sxy = 0, sxx = 0;
-            for (const p of dataPoints) { sx += p.x; sy += p.y; sxy += p.x * p.y; sxx += p.x * p.x; }
+            for (const p of dataPoints) {
+                const u = (p.x - xMean) / xStd;
+                sx += u; sy += p.y; sxy += u * p.y; sxx += u * u;
+            }
             const denom = n * sxx - sx * sx;
             if (Math.abs(denom) < 1e-12) { showError("Variance X nulle : tous les x sont identiques."); currentModel = { type: 'none', coefficients: {} }; return; }
-            const a = (n * sxy - sx * sy) / denom;
-            const b = (sy - a * sx) / n;
+            const aNorm = (n * sxy - sx * sy) / denom;
+            const bNorm = (sy - aNorm * sx) / n;
+            // Dénormalise : y = aNorm*(x-xMean)/xStd + bNorm = (aNorm/xStd)*x + (bNorm - aNorm*xMean/xStd)
+            const a = aNorm / xStd;
+            const b = bNorm - aNorm * xMean / xStd;
             currentModel = { type: 'linear', coefficients: { a, b } };
 
         // ---- EXPONENTIELLE : y = a * e^(bx) ----
@@ -400,19 +408,22 @@
             const a = Math.exp((sLnY - b * sLnX) / m);
             currentModel = { type: 'power', coefficients: { a, b } };
 
-        // ---- POLYNOMIALE degré 2 : y = c2*x² + c1*x + c0 ----
+        // ---- POLYNOMIALE degré 2 : y = c2*x² + c1*x + c0 (normalisée) ----
         } else if (type === 'polynomial') {
+            // Normalise x → u = (x - xMean) / xStd pour éviter overflow avec x=1e16
+            const xMean = dataPoints.reduce((s, p) => s + p.x, 0) / n;
+            const xStd  = Math.sqrt(dataPoints.reduce((s, p) => s + (p.x - xMean)**2, 0) / n) || 1;
             let s0 = n, s1 = 0, s2 = 0, s3 = 0, s4 = 0;
-            let sy = 0, sxy = 0, sx2y = 0;
+            let sy = 0, suy = 0, su2y = 0;
             for (const p of dataPoints) {
-                const x = p.x, y = p.y;
-                s1 += x; s2 += x*x; s3 += x*x*x; s4 += x*x*x*x;
-                sy += y; sxy += x*y; sx2y += x*x*y;
+                const u = (p.x - xMean) / xStd, y = p.y;
+                s1 += u; s2 += u*u; s3 += u*u*u; s4 += u*u*u*u;
+                sy += y; suy += u*y; su2y += u*u*y;
             }
             const mat = [
-                [s0, s1, s2, sy],
-                [s1, s2, s3, sxy],
-                [s2, s3, s4, sx2y]
+                [s0, s1, s2, sy  ],
+                [s1, s2, s3, suy ],
+                [s2, s3, s4, su2y]
             ];
             for (let col = 0; col < 3; col++) {
                 let maxRow = col;
@@ -426,13 +437,18 @@
                     for (let k = col; k <= 3; k++) mat[row][k] -= f * mat[col][k];
                 }
             }
-            const c = [0, 0, 0];
+            const cu = [0, 0, 0];
             for (let i = 2; i >= 0; i--) {
-                c[i] = mat[i][3];
-                for (let j = i+1; j < 3; j++) c[i] -= mat[i][j] * c[j];
-                c[i] /= mat[i][i];
+                cu[i] = mat[i][3];
+                for (let j = i+1; j < 3; j++) cu[i] -= mat[i][j] * cu[j];
+                cu[i] /= mat[i][i];
             }
-            currentModel = { type: 'polynomial', coefficients: { c0: c[0], c1: c[1], c2: c[2] } };
+            // cu = [c0_norm, c1_norm, c2_norm] → y = c2_norm*u² + c1_norm*u + c0_norm
+            // u = (x-xMean)/xStd → dénormalise en coefficients de x
+            const c2 = cu[2] / (xStd * xStd);
+            const c1 = cu[1] / xStd - 2 * cu[2] * xMean / (xStd * xStd);
+            const c0 = cu[0] - cu[1] * xMean / xStd + cu[2] * (xMean / xStd) ** 2;
+            currentModel = { type: 'polynomial', coefficients: { c0, c1, c2 } };
 
         // ---- LOG-POLY DEGRÉ 2 : ln(y) = a·ln(x)² + b·ln(x) + c ----
         } else if (type === 'logpoly2') {
@@ -564,15 +580,15 @@
 
         sortedIndices.forEach(({ p: point, i: realIndex }) => {
             const pred = predict(point.x);
-            const predStr = (pred !== null && !isNaN(pred) && isFinite(pred)) ? pred.toFixed(4) : '—';
+            const predStr = (pred !== null && !isNaN(pred) && isFinite(pred)) ? fmt(pred) : '—';
             const residu = (pred !== null && !isNaN(pred) && isFinite(pred)) ? (point.y - pred) : null;
-            const residuStr = residu !== null ? (residu >= 0 ? '+' : '') + residu.toFixed(4) : '—';
+            const residuStr = residu !== null ? (residu >= 0 ? '+' : '') + fmt(residu) : '—';
             const residuColor = residu === null ? '' : residu >= 0 ? 'color:var(--success)' : 'color:var(--danger)';
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${escapeHTML(point.name)}</td>
-                <td>${point.x.toLocaleString('fr-FR')}</td>
-                <td>${point.y.toFixed(4)} Ø</td>
+                <td>${fmtX(point.x)}</td>
+                <td>${fmt(point.y)} Ø</td>
                 <td style="color:var(--accent)">${predStr} Ø</td>
                 <td style="${residuColor}">${residuStr}</td>
                 <td><button class="btn-danger" onclick="deletePoint(${realIndex})">Supprimer</button></td>
@@ -585,18 +601,18 @@
         if (currentModel.type === 'linear') {
             const { a, b } = currentModel.coefficients;
             const sign = b >= 0 ? '+' : '−';
-            equationDisplay.innerHTML = `y = <b>${a.toExponential(4)}</b> · x ${sign} <b>${Math.abs(b).toFixed(6)}</b>`;
+            equationDisplay.innerHTML = `y = <b>${a.toExponential(4)}</b> · x ${sign} <b>${a.toExponential(4) && Math.abs(b) >= 1e6 ? Math.abs(b).toExponential(4) : fmt(Math.abs(b))}</b>`;
         } else if (currentModel.type === 'exponential') {
             const { a, b } = currentModel.coefficients;
-            equationDisplay.innerHTML = `y = <b>${a.toFixed(6)}</b> · e<sup><b>${b.toExponential(4)}</b> · x</sup>`;
+            equationDisplay.innerHTML = `y = <b>${a.toExponential(4)}</b> · e<sup><b>${b.toExponential(4)}</b> · x</sup>`;
         } else if (currentModel.type === 'power') {
             const { a, b } = currentModel.coefficients;
-            equationDisplay.innerHTML = `y = <b>${a.toFixed(6)}</b> · x<sup><b>${b.toFixed(6)}</b></sup>`;
+            equationDisplay.innerHTML = `y = <b>${a.toExponential(4)}</b> · x<sup><b>${b.toFixed(6)}</b></sup>`;
         } else if (currentModel.type === 'polynomial') {
             const { c0, c1, c2 } = currentModel.coefficients;
             const sign1 = c1 >= 0 ? '+' : '−';
             const sign0 = c0 >= 0 ? '+' : '−';
-            equationDisplay.innerHTML = `y = <b>${c2.toExponential(4)}</b> · x² ${sign1} <b>${Math.abs(c1).toExponential(4)}</b> · x ${sign0} <b>${Math.abs(c0).toFixed(4)}</b>`;
+            equationDisplay.innerHTML = `y = <b>${c2.toExponential(4)}</b> · x² ${sign1} <b>${Math.abs(c1).toExponential(4)}</b> · x ${sign0} <b>${Math.abs(c0).toExponential(4)}</b>`;
         } else if (currentModel.type === 'logpoly2') {
             const { a, b, c } = currentModel.coefficients;
             const signB = b >= 0 ? '+' : '−';
@@ -615,7 +631,7 @@
             const r2pct = (metrics.r2 * 100).toFixed(2);
             r2ValueEl.textContent = r2pct + '%';
             r2BarEl.style.width = r2pct + '%';
-            maeValueEl.textContent = metrics.mae.toFixed(4) + ' Ø';
+            maeValueEl.textContent = fmt(metrics.mae) + ' Ø';
             // Couleur et label qualité
             let qualColor, qualTxt;
             if (metrics.r2 >= 0.99)      { qualColor = '#10b981'; qualTxt = '🟢 Excellent'; }
@@ -639,7 +655,7 @@
         const val = parseFloat(simPoints.value);
         if (!isNaN(val) && currentModel.type !== 'none') {
             const pred = predict(val);
-            simResult.textContent = `Résultat : ${(pred !== null && isFinite(pred)) ? pred.toFixed(6) : '—'} Ø`;
+            simResult.textContent = `Résultat : ${(pred !== null && isFinite(pred)) ? fmt(pred, 8) : '—'} Ø`;
         } else {
             simResult.textContent = "Résultat : — Ø";
         }
@@ -692,6 +708,32 @@
     }
 
     // =============================================
+    //   FORMATAGE INTELLIGENT (gère 1e-9 à 1e16)
+    // =============================================
+    function fmt(v, sigFigs = 6) {
+        if (v === null || v === undefined || isNaN(v) || !isFinite(v)) return '—';
+        if (v === 0) return '0';
+        const abs = Math.abs(v);
+        // Très grand ou très petit → notation scientifique
+        if (abs >= 1e9 || (abs < 0.001 && abs > 0)) {
+            return v.toExponential(sigFigs - 1);
+        }
+        // Normal : on adapte le nombre de décimales selon la magnitude
+        const decimals = Math.max(0, sigFigs - 1 - Math.floor(Math.log10(abs)));
+        return v.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: Math.min(decimals, 8) });
+    }
+
+    function fmtX(v) {
+        if (v === null || isNaN(v) || !isFinite(v)) return '—';
+        const abs = Math.abs(v);
+        if (abs >= 1e12) return (v / 1e12).toFixed(2) + ' T';
+        if (abs >= 1e9)  return (v / 1e9).toFixed(2)  + ' G';
+        if (abs >= 1e6)  return (v / 1e6).toFixed(2)  + ' M';
+        if (abs >= 1e3)  return (v / 1e3).toFixed(1)  + ' k';
+        return v.toLocaleString('fr-FR');
+    }
+
+    // =============================================
     //   GRAPHIQUE CHART.JS — CORRIGÉ
     // =============================================
     function initChart() {
@@ -734,8 +776,9 @@
                         position: 'bottom',
                         grid: { color: 'rgba(51,65,85,0.8)' },
                         ticks: {
-                            color: '#94a3b8',               // ← FIX : couleur des étiquettes d'axe
-                            callback: v => v.toLocaleString('fr-FR')
+                            color: '#94a3b8',
+                            callback: v => fmtX(v),
+                            maxTicksLimit: 8
                         },
                         title: { display: true, text: 'Points (x)', color: '#94a3b8', font: { size: 13 } }
                     },
@@ -743,8 +786,9 @@
                         type: 'linear',
                         grid: { color: 'rgba(51,65,85,0.8)' },
                         ticks: {
-                            color: '#94a3b8',               // ← FIX : couleur des étiquettes d'axe
-                            callback: v => v.toFixed(4) + ' Ø'
+                            color: '#94a3b8',
+                            callback: v => fmt(v) + ' Ø',
+                            maxTicksLimit: 8
                         },
                         title: { display: true, text: 'Valeur du Gold en Ø (y)', color: '#94a3b8', font: { size: 13 } }
                     }
@@ -757,17 +801,17 @@
                         callbacks: {
                             label: (ctx) => {
                                 const raw = ctx.raw;
-                                // Pour le dataset scatter, on enrichit avec le nom du point
                                 if (ctx.datasetIndex === 0) {
-                                    const point = dataPoints[ctx.dataIndex];
-                                    const name = point ? point.name : '';
+                                    // Retrouve le nom via correspondance de coordonnées
+                                    const match = dataPoints.find(p => p.x === raw.x && p.y === raw.y);
+                                    const name = match ? match.name : '';
                                     return [
                                         name ? `📍 ${name}` : null,
-                                        `x = ${raw.x.toLocaleString('fr-FR')}`,
-                                        `y = ${raw.y.toFixed(6)} Ø`
+                                        `x = ${fmtX(raw.x)}`,
+                                        `y = ${fmt(raw.y, 8)} Ø`
                                     ].filter(Boolean);
                                 }
-                                return `Modèle : ${raw.y.toFixed(6)} Ø`;
+                                return `Modèle : ${fmt(raw.y, 8)} Ø`;
                             }
                         }
                     }
@@ -799,9 +843,9 @@
         reader.onload = (evt) => {
             try {
                 const data = new Uint8Array(evt.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
+                const workbook = XLSX.read(data, { type: 'array', cellText: false, cellDates: false });
                 const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
+                const rows = XLSX.utils.sheet_to_json(sheet, { defval: null, raw: true });
 
                 let added = 0, skipped = 0;
                 for (const row of rows) {
@@ -859,22 +903,28 @@
         // --- Dataset 0 : TOUS les points réels ---
         chartInstance.data.datasets[0].data = dataPoints.map(p => ({ x: p.x, y: p.y }));
 
-        // --- Dataset 1 : ligne de tendance ---
+        // --- Dataset 1 : courbe de tendance ---
         if (dataPoints.length >= 2 && currentModel.type !== 'none') {
-            const xs = dataPoints.map(p => p.x);
+            const xs = dataPoints.map(p => p.x).filter(v => v > 0);
+            if (xs.length === 0) { chartInstance.data.datasets[1].data = []; chartInstance.update(); return; }
             const minX = Math.min(...xs);
             const maxX = Math.max(...xs);
-            const delta = (maxX - minX) || Math.max(maxX * 0.5, 1000);
-            const startX = Math.max(0, minX - delta * 0.15);
-            const endX = maxX + delta * 0.15;
 
-            const STEPS = 120;  // ← haute résolution pour courbes précises
-            const step = (endX - startX) / STEPS;
+            // Étend la plage pour voir l'extrapolation (+30% de chaque côté en log)
+            const logMin = Math.log10(minX);
+            const logMax = Math.log10(maxX);
+            const logPad = Math.max((logMax - logMin) * 0.2, 0.1);
+            const startLogX = Math.max(logMin - logPad, -2);  // jamais en-dessous de 0.01
+            const endLogX   = logMax + logPad;
+
+            // Steps LOGARITHMIQUES — essentiels pour les plages 1e6 → 1e16
+            const STEPS = 200;
+            const logStep = (endLogX - startLogX) / STEPS;
             const lineData = [];
             for (let i = 0; i <= STEPS; i++) {
-                const cx = startX + i * step;
+                const cx = Math.pow(10, startLogX + i * logStep);
                 const cy = predict(cx);
-                if (cy !== null && isFinite(cy) && !isNaN(cy) && cy >= 0) {
+                if (cy !== null && isFinite(cy) && !isNaN(cy) && cy > 0) {
                     lineData.push({ x: cx, y: cy });
                 }
             }
@@ -883,7 +933,6 @@
             chartInstance.data.datasets[1].data = [];
         }
 
-        // ← FIX CRITIQUE : un seul appel update(), sans double-appel
         chartInstance.update();
     }
 </script>
