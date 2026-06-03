@@ -3,465 +3,889 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Empire Immo - Liste des Joueurs</title>
+    <title>Analyseur Économique - EmpireImmo</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         :root {
-            --primary-color: #2563eb;
-            --primary-hover: #1d4ed8;
-            --background-color: #f8fafc;
-            --card-background: #ffffff;
-            --text-color: #1e293b;
-            --text-light: #64748b;
-            --border-color: #e2e8f0;
-            --accent-color: #0ea5e9;
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --primary: #8b5cf6;
+            --primary-hover: #a78bfa;
+            --accent: #06b6d4;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --danger: #ef4444;
+            --danger-hover: #f87171;
+            --success: #10b981;
+            --border: #334155;
         }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--background-color);
-            color: var(--text-color);
-            padding: 20px;
-            line-height: 1.6;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        h1 {
-            color: var(--primary-color);
-            margin-bottom: 5px;
-        }
-
-        #api-description {
-            font-style: italic;
-            color: var(--text-light);
-            margin-bottom: 10px;
-        }
-
-        .stats-badge {
-            display: inline-block;
-            background-color: var(--primary-color);
-            color: white;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: bold;
-        }
-
-        /* Barre de recherche et filtres */
-        .controls-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-
-        @media (min-width: 768px) {
-            .controls-container {
-                flex-direction: row;
-                justify-content: space-between;
-            }
-        }
-
-        #search-input {
-            width: 100%;
-            max-width: 400px;
-            padding: 12px 20px;
-            font-size: 16px;
-            border: 2px solid var(--border-color);
-            border-radius: 25px;
-            outline: none;
-            transition: border-color 0.3s ease;
-        }
-
-        #search-input:focus {
-            border-color: var(--primary-color);
-        }
-
-        /* Groupe de boutons de filtrage */
-        .filter-group {
-            display: flex;
-            background-color: #e2e8f0;
-            padding: 4px;
-            border-radius: 25px;
-            gap: 2px;
-        }
-
-        .filter-btn {
-            background: none;
-            border: none;
-            color: var(--text-color);
-            padding: 8px 20px;
-            font-size: 14px;
-            font-weight: 600;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .filter-btn:hover:not(.active) {
-            background-color: rgba(255, 255, 255, 0.5);
-        }
-
-        .filter-btn.active {
-            background-color: var(--primary-color);
-            color: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        /* Statut de chargement et messages d'erreur/synchro */
-        #status-message {
-            text-align: center;
-            font-size: 18px;
-            font-weight: bold;
-            margin-top: 20px;
-            color: var(--text-light);
-        }
-
-        #sync-status {
-            text-align: center;
-            font-size: 13px;
-            margin-bottom: 15px;
-            color: #10b981;
-            font-weight: 600;
-            height: 20px;
-        }
-
-        .error {
-            color: #ef4444 !important;
-        }
-
-        /* Grille des joueurs */
-        .players-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 20px;
-        }
-
-        /* Carte Joueur */
-        .player-card {
-            background-color: var(--card-background);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .player-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        }
-
-        /* Style quand la carte est cochée */
-        .player-card.checked {
-            border-color: var(--primary-color);
-            background-color: #eff6ff;
-        }
-
-        /* Checkbox en haut à gauche */
-        .player-checkbox-container {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            z-index: 2;
-        }
-
-        .player-checkbox {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-            accent-color: var(--primary-color);
-        }
-
-        .player-pseudo {
-            font-size: 20px;
-            font-weight: bold;
-            color: var(--primary-color);
-            margin-top: 15px;
-            margin-bottom: 12px;
-            border-bottom: 2px solid var(--border-color);
-            padding-bottom: 5px;
-            word-break: break-all;
-        }
-
-        .player-info {
-            font-size: 14px;
-            color: var(--text-light);
-            margin-bottom: 6px;
-        }
-
-        .player-info strong {
-            color: var(--text-color);
-        }
-
-        /* Badge pour le classement en haut à droite */
-        .rank-badge {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background-color: #f1f5f9;
-            color: var(--text-color);
-            padding: 2px 8px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: bold;
-            border: 1px solid var(--border-color);
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg-main); color: var(--text-main); padding: 2rem; line-height: 1.5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 2rem; }
+        header h1 { font-size: 2.5rem; background: linear-gradient(to right, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem; }
+        header p { color: var(--text-muted); }
+        .grid { display: grid; grid-template-columns: 1fr; gap: 2rem; }
+        @media (min-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } .full-width { grid-column: span 2; } }
+        .card { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); }
+        .card h2 { font-size: 1.25rem; margin-bottom: 1rem; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; }
+        .form-group { margin-bottom: 1rem; position: relative; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        label { display: block; font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+        input, select { width: 100%; padding: 0.75rem; background-color: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main); font-size: 1rem; transition: border-color 0.2s; }
+        input:focus, select:focus { outline: none; border-color: var(--primary); }
+        button { cursor: pointer; padding: 0.75rem 1.5rem; border: none; border-radius: 6px; font-weight: 600; transition: all 0.2s; }
+        .btn-primary { background-color: var(--primary); color: white; width: 100%; }
+        .btn-primary:hover { background-color: var(--primary-hover); }
+        .btn-danger { background-color: transparent; color: var(--danger); border: 1px solid var(--danger); padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+        .btn-danger:hover { background-color: var(--danger); color: white; }
+        .btn-secondary { background-color: #475569; color: white; }
+        .btn-secondary:hover { background-color: #64748b; }
+        .btn-excel-import { background-color: #166534; color: white; border: 1px solid #15803d; }
+        .btn-excel-import:hover { background-color: #15803d; }
+        .btn-excel-export { background-color: #1e3a5f; color: white; border: 1px solid #1d4ed8; }
+        .btn-excel-export:hover { background-color: #1d4ed8; }
+        .excel-zone { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+        .excel-zone button { flex: 1; font-size: 0.9rem; padding: 0.6rem 1rem; }
+        .import-feedback { font-size: 0.8rem; margin-top: 0.5rem; padding: 0.4rem 0.75rem; border-radius: 6px; display: none; }
+        .import-feedback.success { background: #052e16; color: #86efac; border: 1px solid #15803d; display: block; }
+        .import-feedback.warning { background: #422006; color: #fdba74; border: 1px solid #c2410c; display: block; }
+        .table-container { overflow-x: auto; max-height: 300px; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 0.75rem; border-bottom: 1px solid var(--border); }
+        th { color: var(--text-muted); font-size: 0.875rem; text-transform: uppercase; }
+        .equation-box { background: linear-gradient(135deg, #1e1b4b, #2e1065); padding: 1.5rem; border-radius: 8px; text-align: center; font-size: 1.1rem; font-weight: bold; color: #e9d5ff; border: 1px solid var(--primary); margin-bottom: 0.75rem; line-height: 1.8; }
+        .r2-box { display: flex; justify-content: center; gap: 2rem; padding: 0.75rem 1rem; background: #0f172a; border-radius: 8px; margin-bottom: 1rem; border: 1px solid var(--border); }
+        .r2-item { text-align: center; }
+        .r2-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .r2-value { font-size: 1.25rem; font-weight: bold; }
+        .alert { padding: 0.75rem; background-color: #7f1d1d; border: 1px solid var(--danger); color: #fca5a5; border-radius: 6px; margin-bottom: 1rem; display: none; }
+        .api-box { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+        .api-input-wrapper { position: relative; width: 100%; }
+        .suggestions-list { position: absolute; top: 100%; left: 0; width: 100%; background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 0 0 6px 6px; max-height: 200px; overflow-y: auto; z-index: 10; display: none; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); }
+        .suggestion-item { padding: 0.75rem; cursor: pointer; border-bottom: 1px solid #334155; transition: background-color 0.2s; }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover { background-color: var(--primary); color: white; }
+        .badge { background-color: var(--accent); color: var(--bg-main); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
+        .model-description { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; padding: 0.5rem 0.75rem; background: #0f172a; border-radius: 6px; border-left: 3px solid var(--primary); }
+        .quality-bar-wrap { margin-top: 0.5rem; }
+        .quality-bar-bg { height: 6px; background: #1e293b; border-radius: 3px; margin-top: 4px; }
+        .quality-bar-fill { height: 6px; border-radius: 3px; transition: width 0.5s ease; }
     </style>
 </head>
 <body>
+<div class="container">
+    <header>
+        <h1>Analyseur Mathématique d'Économie (Monde 8)</h1>
+        <p>Trouvez la loi mathématique cachée derrière la valeur du Gold en fonction de la masse monétaire et des points.</p>
+    </header>
+    <div class="grid">
 
-    <div class="container">
-        <header>
-            <h1 id="api-title">Chargement...</h1>
-            <p id="api-description"></p>
-            <div id="api-stats" style="display: none;">
-                <span class="stats-badge" id="player-count">0 joueurs</span>
+        <!-- SAISIE -->
+        <div class="card">
+            <h2>Saisie des données</h2>
+            <div class="form-group" style="background:#111827;padding:1rem;border-radius:8px;margin-bottom:1.5rem;">
+                <label>Optionnel : Importer depuis la Masse Monétaire (API)</label>
+                <div class="api-box">
+                    <button type="button" class="btn-secondary" id="btn-fetch-api" style="font-size:0.9rem;padding:0.5rem 1rem;width:100%;margin-bottom:0.5rem;">Charger Joueurs API</button>
+                    <div class="api-input-wrapper">
+                        <input type="text" id="api-search-input" placeholder="Écrivez le pseudo du joueur pour chercher..." disabled>
+                        <div id="suggestions-box" class="suggestions-list"></div>
+                    </div>
+                </div>
+                <small style="color:var(--text-muted);display:block;font-size:0.8rem;">Recherche instantanée dans le JSON extrait pour cibler la puissance/masse d'un compte joueur.</small>
             </div>
-        </header>
+            <div class="alert" id="error-message"></div>
+            <form id="data-form">
+                <div class="form-group">
+                    <label for="name">Nom de la personne / Repère temporel</label>
+                    <input type="text" id="name" placeholder="Ex: Joueur Top 1, Étape A, Masse globale..." required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="points">Nombre de points (x)</label>
+                        <input type="number" id="points" step="any" min="0" placeholder="Ex: 15000" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="gold-value">Valeur d'un gold en Ø (y)</label>
+                        <input type="number" id="gold-value" step="any" min="0" placeholder="Ex: 2.5" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary">Ajouter à l'analyse</button>
+            </form>
+        </div>
 
-        <div id="sync-status"></div>
+        <!-- MODÉLISATION -->
+        <div class="card">
+            <h2>Modélisation & Options</h2>
+            <div class="form-group">
+                <label for="model-type">Type de courbe (Régression)</label>
+                <select id="model-type">
+                    <option value="power">Puissance : y = a · xᵇ  ✦ Recommandé économie</option>
+                    <option value="interpolation">🎯 Interpolation exacte (passe par TOUS les points)</option>
+                    <option value="logpoly2">Log-Poly degré 2 : ln(y) = a·ln(x)² + b·ln(x) + c  ✦ Extra-précis</option>
+                    <option value="linear">Linéaire : y = ax + b</option>
+                    <option value="exponential">Exponentielle : y = a · eᵇˣ</option>
+                    <option value="polynomial">Polynomiale (degré 2) : y = ax² + bx + c</option>
+                </select>
+                <div class="model-description" id="model-desc">
+                    Modèle le plus simple. Suppose une relation proportionnelle directe entre les points et la valeur.
+                </div>
+            </div>
+            <!-- IMPORT / EXPORT EXCEL -->
+            <div style="margin-top:1.5rem;background:#0f172a;padding:1rem;border-radius:8px;border:1px solid var(--border);">
+                <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.5rem;">📂 Import / Export Excel (.xlsx / .ods)</div>
+                <div style="font-size:0.75rem;color:#64748b;margin-bottom:0.75rem;">Format attendu : colonnes <b style="color:#94a3b8">NOM</b>, <b style="color:#94a3b8">POINT</b>, <b style="color:#94a3b8">OR</b> — les lignes incomplètes sont ignorées.</div>
+                <input type="file" id="excel-file-input" accept=".xlsx,.xls,.ods,.csv" style="display:none;">
+                <div class="excel-zone">
+                    <button type="button" class="btn-excel-import" id="btn-import-excel">⬆ Importer Excel</button>
+                    <button type="button" class="btn-excel-export" id="btn-export-excel">⬇ Exporter Excel</button>
+                </div>
+                <div class="import-feedback" id="import-feedback"></div>
+            </div>
 
-        <div class="controls-container">
-            <input type="text" id="search-input" placeholder="Rechercher un pseudo..." disabled>
-            
-            <div class="filter-group">
-                <button id="btn-all" class="filter-btn active" data-filter="all">Tous</button>
-                <button id="btn-checked" class="filter-btn" data-filter="checked">Cochés</button>
-                <button id="btn-unchecked" class="filter-btn" data-filter="unchecked">Non cochés</button>
+            <div style="margin-top:1rem;">
+                <button type="button" class="btn-danger" id="btn-reset" style="width:100%;">
+                    Réinitialiser toutes les données (Vider le cache)
+                </button>
             </div>
         </div>
 
-        <div id="status-message">Connexion au proxy et récupération des joueurs...</div>
-
-        <div class="players-grid" id="players-container">
+        <!-- TABLEAU -->
+        <div class="card full-width">
+            <h2>Données Actuelles <span class="badge" id="data-count">0</span></h2>
+            <div class="table-container">
+                <table id="data-table">
+                    <thead>
+                        <tr>
+                            <th>Nom / Référence</th>
+                            <th>Points (x)</th>
+                            <th>Valeur du Gold Ø (y)</th>
+                            <th>Prédiction modèle</th>
+                            <th>Résidu (Δ)</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
             </div>
-    </div>
+        </div>
 
-    <script>
-        const proxyUrl = "https://mon-proxy-empire.yangtiradol.workers.dev/?url=";
-        const apiUrl = "https://monde8.empireimmo.com/api/players.json";
-        const npointUrl = "https://api.npoint.io/3ef3a804286023b143dd";
-
-        const targetApiUrl = proxyUrl + encodeURIComponent(apiUrl);
-
-        let allPlayers = [];
-        let checkedPlayers = new Set();
-        let currentFilter = 'all'; 
-
-        const playersContainer = document.getElementById('players-container');
-        const statusMessage = document.getElementById('status-message');
-        const syncStatus = document.getElementById('sync-status');
-        const searchInput = document.getElementById('search-input');
-        const apiTitle = document.getElementById('api-title');
-        const apiDescription = document.getElementById('api-description');
-        const apiStats = document.getElementById('api-stats');
-        const playerCount = document.getElementById('player-count');
-        const filterButtons = document.querySelectorAll('.filter-btn');
-
-        // Étape 1 : Charger directement la sauvegarde npoint.io (sans proxy)
-        async function init() {
-            showSyncMessage("Chargement des sauvegardes npoint.io...", "#64748b");
-            try {
-                const savedResponse = await fetch(npointUrl);
-                if (savedResponse.ok) {
-                    const savedData = await savedResponse.json();
-                    // Lecture sécurisée de la clé
-                    if (savedData && savedData.pseudos_coches && Array.isArray(savedData.pseudos_coches)) {
-                        savedData.pseudos_coches.forEach(pseudo => checkedPlayers.add(pseudo));
-                        showSyncMessage(`✓ ${checkedPlayers.size} joueur(s) synchronisé(s) depuis npoint.io`, "#10b981");
-                    } else {
-                        showSyncMessage("Prêt (base npoint vide).", "#f59e0b");
-                    }
-                } else {
-                    showSyncMessage("Prêt (aucune sauvegarde trouvée).", "#f59e0b");
-                }
-            } catch (e) {
-                console.warn("Fichier vide ou non trouvé au premier démarrage.", e);
-                showSyncMessage("Prêt (base npoint prête).", "#f59e0b");
-            }
-
-            fetchPlayers();
-        }
-
-        // Récupération des données d'Empire Immo via le proxy
-        async function fetchPlayers() {
-            try {
-                const response = await fetch(targetApiUrl);
-                if (!response.ok) throw new Error(`Erreur HTTP ! Statut : ${response.status}`);
-
-                const data = await response.json();
-                
-                apiTitle.textContent = data.nom || "Empire Immo";
-                apiDescription.textContent = data.description || "";
-                if (data.nb_joueurs) {
-                    playerCount.textContent = `${data.nb_joueurs.toLocaleString()} joueurs`;
-                    apiStats.style.display = 'block';
-                }
-
-                let rawPlayers = data.joueurs || [];
-
-                allPlayers = rawPlayers.sort((a, b) => {
-                    const pointsA = a.points ?? 0;
-                    const pointsB = b.points ?? 0;
-                    return pointsB - pointsA;
-                });
-
-                if (allPlayers.length === 0) {
-                    statusMessage.textContent = "Aucun joueur trouvé dans le fichier.";
-                    return;
-                }
-
-                statusMessage.style.display = 'none';
-                searchInput.disabled = false;
-
-                updateDisplay();
-
-            } catch (error) {
-                console.error("Erreur lors du chargement :", error);
-                apiTitle.textContent = "Erreur de chargement";
-                statusMessage.textContent = "Impossible de récupérer les données de l'API joueurs.";
-                statusMessage.classList.add('error');
-            }
-        }
-
-        // Sauvegarde directe en PUT sur npoint (sans passer par Cloudflare)
-        async function saveToNpoint() {
-            showSyncMessage("Sauvegarde en cours sur npoint.io...", "#3b82f6");
-            try {
-                const dataToSave = {
-                    derniere_mise_a_jour: new Date().toISOString(),
-                    total_coches: checkedPlayers.size,
-                    pseudos_coches: Array.from(checkedPlayers)
-                };
-
-                const response = await fetch(npointUrl, {
-                    method: 'PUT', 
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(dataToSave)
-                });
-
-                if (!response.ok) throw new Error("Erreur lors de la mise à jour réseau");
-                
-                // La sauvegarde est validée avec succès par le serveur npoint
-                showSyncMessage("✓ Sauvegarde réussie sur npoint.io !", "#10b981");
-            } catch (error) {
-                console.error("Erreur de sauvegarde :", error);
-                showSyncMessage("✗ Erreur de sauvegarde sur npoint.io", "#ef4444");
-            }
-        }
-
-        function showSyncMessage(text, color) {
-            syncStatus.textContent = text;
-            syncStatus.style.color = color;
-        }
-
-        function updateDisplay() {
-            const searchTerm = searchInput.value.toLowerCase().trim();
-            
-            let processedPlayers = allPlayers.filter(player => {
-                const pseudo = (player.pseudo || '').toLowerCase();
-                const matchesSearch = pseudo.includes(searchTerm);
-
-                let matchesCategory = true;
-                const isChecked = checkedPlayers.has(player.pseudo);
-                
-                if (currentFilter === 'checked') {
-                    matchesCategory = isChecked;
-                } else if (currentFilter === 'unchecked') {
-                    matchesCategory = !isChecked;
-                }
-
-                return matchesSearch && matchesCategory;
-            });
-
-            renderPlayers(processedPlayers);
-        }
-
-        function renderPlayers(players) {
-            playersContainer.innerHTML = "";
-
-            players.forEach(player => {
-                const isChecked = checkedPlayers.has(player.pseudo);
-                const card = document.createElement('div');
-                card.className = `player-card ${isChecked ? 'checked' : ''}`;
-
-                const formattedPoints = player.points !== undefined ? player.points.toLocaleString() : '0';
-
-                card.innerHTML = `
-                    <div class="player-checkbox-container">
-                        <input type="checkbox" class="player-checkbox" ${isChecked ? 'checked' : ''} data-pseudo="${player.pseudo}">
+        <!-- ÉQUATION -->
+        <div class="card full-width">
+            <h2>Équation Prédictive Générée</h2>
+            <div class="equation-box" id="equation-display">
+                Ajoutez au moins 2 points pour calculer l'équation.
+            </div>
+            <!-- R² et qualité -->
+            <div class="r2-box" id="r2-box" style="display:none;">
+                <div class="r2-item">
+                    <div class="r2-label">R² (précision)</div>
+                    <div class="r2-value" id="r2-value" style="color:var(--success);">—</div>
+                    <div class="quality-bar-wrap">
+                        <div class="quality-bar-bg"><div class="quality-bar-fill" id="r2-bar" style="width:0%;background:var(--success);"></div></div>
                     </div>
-                    <div class="rank-badge">#${player.classement || '-'}</div>
-                    <div class="player-pseudo">${player.pseudo || 'Inconnu'}</div>
-                    <div class="player-info"><strong>Niveau :</strong> ${player.niveau ?? '-'}</div>
-                    <div class="player-info"><strong>Points :</strong> ${formattedPoints}</div>
-                    <div class="player-info"><strong>Ville :</strong> ${player.ville || '-'}</div>
-                `;
-                
-                playersContainer.appendChild(card);
-            });
+                </div>
+                <div class="r2-item">
+                    <div class="r2-label">Erreur moy. (MAE)</div>
+                    <div class="r2-value" id="mae-value" style="color:var(--accent);">—</div>
+                </div>
+                <div class="r2-item">
+                    <div class="r2-label">Qualité du modèle</div>
+                    <div class="r2-value" id="quality-label" style="font-size:0.95rem;">—</div>
+                </div>
+            </div>
 
-            document.querySelectorAll('.player-checkbox').forEach(checkbox => {
-                checkbox.addEventListener('change', (e) => {
-                    const pseudo = e.target.dataset.pseudo;
-                    const card = e.target.closest('.player-card');
-                    
-                    if (e.target.checked) {
-                        checkedPlayers.add(pseudo);
-                        card.classList.add('checked');
-                    } else {
-                        checkedPlayers.delete(pseudo);
-                        card.classList.remove('checked');
+            <div style="background-color:var(--bg-main);padding:1rem;border-radius:8px;margin-top:1rem;">
+                <h3>Simulateur de Valeur (Prédiction)</h3>
+                <div class="form-row" style="margin-top:0.5rem;align-items:flex-end;">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label for="sim-points">Entrez un nombre de points théorique :</label>
+                        <input type="number" id="sim-points" placeholder="Ex: 25000">
+                    </div>
+                    <div style="font-size:1.1rem;font-weight:bold;padding:0.6rem;color:var(--accent);" id="sim-result">
+                        Résultat : -- Ø
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- GRAPHIQUE -->
+        <div class="card full-width">
+            <h2>Graphique & Courbe de Tendance</h2>
+            <div style="position:relative;height:420px;width:100%;">
+                <canvas id="regressionChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- ÉTAT GLOBAL ---
+    let dataPoints = [];
+    let currentModel = { type: 'none', coefficients: {} };
+    let chartInstance = null;
+    let apiPlayersData = [];
+
+    // --- SÉLECTEURS DOM ---
+    const dataForm         = document.getElementById('data-form');
+    const nameInput        = document.getElementById('name');
+    const pointsInput      = document.getElementById('points');
+    const goldInput        = document.getElementById('gold-value');
+    const dataTableBody    = document.querySelector('#data-table tbody');
+    const dataCountBadge   = document.getElementById('data-count');
+    const modelTypeSelect  = document.getElementById('model-type');
+    const equationDisplay  = document.getElementById('equation-display');
+    const btnReset         = document.getElementById('btn-reset');
+    const errorMessage     = document.getElementById('error-message');
+    const simPoints        = document.getElementById('sim-points');
+    const simResult        = document.getElementById('sim-result');
+    const btnFetchApi      = document.getElementById('btn-fetch-api');
+    const apiSearchInput   = document.getElementById('api-search-input');
+    const suggestionsBox   = document.getElementById('suggestions-box');
+    const modelDesc        = document.getElementById('model-desc');
+    const r2Box            = document.getElementById('r2-box');
+    const r2ValueEl        = document.getElementById('r2-value');
+    const r2BarEl          = document.getElementById('r2-bar');
+    const maeValueEl       = document.getElementById('mae-value');
+    const qualityLabelEl   = document.getElementById('quality-label');
+
+    const MODEL_DESCRIPTIONS = {
+        linear:       "Modèle le plus simple. Suppose une relation proportionnelle directe entre les points et la valeur.",
+        exponential:  "Croissance/décroissance rapide. Utile si la valeur explose ou s'effondre exponentiellement.",
+        power:        "✦ Loi de puissance. Très adapté aux économies de jeu : la valeur croît/décroit selon une puissance des points. Bon pour extrapoler vers les hauts scores.",
+        polynomial:   "Courbe parabolique (degré 2). Capture des inflexions non-linéaires complexes dans les données.",
+        interpolation:"🎯 Polynôme interpolant de Lagrange : la courbe passe EXACTEMENT par chacun de vos points. Idéal pour prédire des valeurs entre et au-delà de vos données. Attention : moins fiable très loin des données avec beaucoup de points.",
+        logpoly2:     "✦✦ Régression polynomiale de degré 2 dans l'espace log-log : ln(y) = a·ln(x)² + b·ln(x) + c. Capture les courbes en S et les lois de puissance complexes. Excellent pour extrapoler vers les grands scores."
+    };
+
+    // --- INITIALISATION ---
+    document.addEventListener('DOMContentLoaded', () => {
+        loadDataFromStorage();
+        initChart();          // ← IMPORTANT : le graphique doit exister avant updateUI
+        updateUI();
+    });
+
+    // --- LOCALSTORAGE ---
+    function loadDataFromStorage() {
+        try {
+            const stored = localStorage.getItem('empire_immo_data_v2');
+            if (stored) dataPoints = JSON.parse(stored);
+        } catch(e) { dataPoints = []; }
+    }
+    function saveDataToStorage() {
+        localStorage.setItem('empire_immo_data_v2', JSON.stringify(dataPoints));
+    }
+
+    // --- API & AUTOCOMPLÉTION ---
+    btnFetchApi.addEventListener('click', async () => {
+        btnFetchApi.textContent = "Chargement...";
+        btnFetchApi.disabled = true;
+        showError("");
+        const proxyUrl = "https://mon-proxy-empire.yangtiradol.workers.dev/?url=";
+        const targetUrl = "https://monde8.empireimmo.com/api/players.json";
+        try {
+            const response = await fetch(proxyUrl + encodeURIComponent(targetUrl));
+            if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
+            const data = await response.json();
+            function extractArray(obj) {
+                if (Array.isArray(obj)) return obj;
+                if (obj && typeof obj === 'object') {
+                    for (let key in obj) {
+                        if (Array.isArray(obj[key])) return obj[key];
+                        const deep = extractArray(obj[key]);
+                        if (deep) return deep;
                     }
-
-                    saveToNpoint();
-
-                    if (currentFilter !== 'all') {
-                        setTimeout(updateDisplay, 250);
-                    }
-                });
-            });
-
-            if (players.length === 0) {
-                playersContainer.innerHTML = `
-                    <p style="grid-column: 1/-1; text-align: center; color: var(--text-light); margin-top: 20px;">
-                        Aucun résultat disponible.
-                    </p>`;
+                }
+                return null;
             }
+            let table = extractArray(data) || (data && typeof data === 'object' ? Object.values(data) : null);
+            if (!table || table.length === 0) throw new Error("Liste des joueurs introuvable dans la réponse JSON.");
+            apiPlayersData = table.map((p, i) => p && typeof p === 'object' ? {
+                name: p.name || p.username || p.pseudo || p.playerName || `Joueur #${i}`,
+                points: Math.round(p.points || p.score || p.capital || p.money || 0)
+            } : null).filter(Boolean);
+            apiSearchInput.disabled = false;
+            apiSearchInput.placeholder = "Tapez le pseudo d'un joueur...";
+            btnFetchApi.textContent = `✓ ${apiPlayersData.length} joueurs synchronisés`;
+            apiSearchInput.focus();
+        } catch (err) {
+            showError("Erreur d'importation : " + err.message);
+            btnFetchApi.textContent = "Réessayer";
+            btnFetchApi.disabled = false;
+        }
+    });
+
+    apiSearchInput.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        suggestionsBox.innerHTML = '';
+        if (!query || !apiPlayersData.length) { suggestionsBox.style.display = 'none'; return; }
+        const filtered = apiPlayersData.filter(p => p.name.toLowerCase().includes(query)).slice(0, 10);
+        if (filtered.length > 0) {
+            filtered.forEach(player => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.textContent = `${player.name} (${player.points.toLocaleString('fr-FR')} pts)`;
+                div.addEventListener('click', () => {
+                    nameInput.value = player.name;
+                    pointsInput.value = player.points;
+                    apiSearchInput.value = player.name;
+                    suggestionsBox.style.display = 'none';
+                    goldInput.value = "";
+                    goldInput.focus();
+                });
+                suggestionsBox.appendChild(div);
+            });
+        } else {
+            const div = document.createElement('div');
+            div.className = 'suggestion-item';
+            div.style.color = 'var(--text-muted)';
+            div.style.cursor = 'default';
+            div.textContent = "Aucun joueur trouvé";
+            suggestionsBox.appendChild(div);
+        }
+        suggestionsBox.style.display = 'block';
+    });
+
+    document.addEventListener('click', (e) => {
+        if (e.target !== apiSearchInput) suggestionsBox.style.display = 'none';
+    });
+
+    // =============================================
+    //   MATHÉMATIQUES : RÉGRESSIONS & INTERPOLATION
+    // =============================================
+
+    function calculateRegression() {
+        const n = dataPoints.length;
+        const type = modelTypeSelect.value;
+        if (n < 2) { currentModel = { type: 'none', coefficients: {} }; return; }
+
+        // ---- LINÉAIRE : y = ax + b ----
+        if (type === 'linear') {
+            let sx = 0, sy = 0, sxy = 0, sxx = 0;
+            for (const p of dataPoints) { sx += p.x; sy += p.y; sxy += p.x * p.y; sxx += p.x * p.x; }
+            const denom = n * sxx - sx * sx;
+            if (Math.abs(denom) < 1e-12) { showError("Variance X nulle : tous les x sont identiques."); currentModel = { type: 'none', coefficients: {} }; return; }
+            const a = (n * sxy - sx * sy) / denom;
+            const b = (sy - a * sx) / n;
+            currentModel = { type: 'linear', coefficients: { a, b } };
+
+        // ---- EXPONENTIELLE : y = a * e^(bx) ----
+        } else if (type === 'exponential') {
+            let sx = 0, sLnY = 0, sxLnY = 0, sxx = 0, m = 0;
+            for (const p of dataPoints) {
+                if (p.y <= 0) continue;
+                sx += p.x; sLnY += Math.log(p.y); sxLnY += p.x * Math.log(p.y); sxx += p.x * p.x; m++;
+            }
+            if (m < 2) { showError("Modèle exponentiel : besoin d'au moins 2 points avec y > 0."); currentModel = { type: 'none', coefficients: {} }; return; }
+            const denom = m * sxx - sx * sx;
+            if (Math.abs(denom) < 1e-12) { currentModel = { type: 'none', coefficients: {} }; return; }
+            const bExp = (m * sxLnY - sx * sLnY) / denom;
+            const aExp = Math.exp((sLnY - bExp * sx) / m);
+            currentModel = { type: 'exponential', coefficients: { a: aExp, b: bExp } };
+
+        // ---- PUISSANCE : y = a * x^b  (log-log linéarisation) ----
+        } else if (type === 'power') {
+            let sLnX = 0, sLnY = 0, sLnXLnY = 0, sLnXX = 0, m = 0;
+            for (const p of dataPoints) {
+                if (p.x <= 0 || p.y <= 0) continue;
+                const lx = Math.log(p.x), ly = Math.log(p.y);
+                sLnX += lx; sLnY += ly; sLnXLnY += lx * ly; sLnXX += lx * lx; m++;
+            }
+            if (m < 2) { showError("Modèle puissance : besoin d'au moins 2 points avec x > 0 et y > 0."); currentModel = { type: 'none', coefficients: {} }; return; }
+            const denom = m * sLnXX - sLnX * sLnX;
+            if (Math.abs(denom) < 1e-12) { currentModel = { type: 'none', coefficients: {} }; return; }
+            const b = (m * sLnXLnY - sLnX * sLnY) / denom;
+            const a = Math.exp((sLnY - b * sLnX) / m);
+            currentModel = { type: 'power', coefficients: { a, b } };
+
+        // ---- POLYNOMIALE degré 2 : y = c2*x² + c1*x + c0 ----
+        } else if (type === 'polynomial') {
+            let s0 = n, s1 = 0, s2 = 0, s3 = 0, s4 = 0;
+            let sy = 0, sxy = 0, sx2y = 0;
+            for (const p of dataPoints) {
+                const x = p.x, y = p.y;
+                s1 += x; s2 += x*x; s3 += x*x*x; s4 += x*x*x*x;
+                sy += y; sxy += x*y; sx2y += x*x*y;
+            }
+            const mat = [
+                [s0, s1, s2, sy],
+                [s1, s2, s3, sxy],
+                [s2, s3, s4, sx2y]
+            ];
+            for (let col = 0; col < 3; col++) {
+                let maxRow = col;
+                for (let row = col+1; row < 3; row++) {
+                    if (Math.abs(mat[row][col]) > Math.abs(mat[maxRow][col])) maxRow = row;
+                }
+                [mat[col], mat[maxRow]] = [mat[maxRow], mat[col]];
+                if (Math.abs(mat[col][col]) < 1e-10) { showError("Impossible de résoudre : points colinéaires ou trop peu distincts."); currentModel = { type: 'none', coefficients: {} }; return; }
+                for (let row = col+1; row < 3; row++) {
+                    const f = mat[row][col] / mat[col][col];
+                    for (let k = col; k <= 3; k++) mat[row][k] -= f * mat[col][k];
+                }
+            }
+            const c = [0, 0, 0];
+            for (let i = 2; i >= 0; i--) {
+                c[i] = mat[i][3];
+                for (let j = i+1; j < 3; j++) c[i] -= mat[i][j] * c[j];
+                c[i] /= mat[i][i];
+            }
+            currentModel = { type: 'polynomial', coefficients: { c0: c[0], c1: c[1], c2: c[2] } };
+
+        // ---- LOG-POLY DEGRÉ 2 : ln(y) = a·ln(x)² + b·ln(x) + c ----
+        } else if (type === 'logpoly2') {
+            const pts = dataPoints.filter(p => p.x > 0 && p.y > 0);
+            const m = pts.length;
+            if (m < 3) { showError("Log-Poly degré 2 : besoin d'au moins 3 points avec x > 0 et y > 0."); currentModel = { type: 'none', coefficients: {} }; return; }
+            // Régression linéaire multiple dans l'espace ln(x), ln(y)
+            // Variables : u = ln(x), v = ln(y). On cherche v = a*u² + b*u + c
+            let su2=0, su3=0, su4=0, su=0, s1=m;
+            let sv=0, svu=0, svu2=0;
+            for (const p of pts) {
+                const u = Math.log(p.x), v = Math.log(p.y);
+                su += u; su2 += u*u; su3 += u*u*u; su4 += u*u*u*u;
+                sv += v; svu += v*u; svu2 += v*u*u;
+            }
+            // Système 3x3 (moindres carrés) : [s4,s3,s2 | s3,s2,s1 | s2,s1,m] * [a,b,c] = [svu2,svu,sv]
+            const mat3 = [
+                [su4, su3, su2, svu2],
+                [su3, su2, su,  svu ],
+                [su2, su,  s1,  sv  ]
+            ];
+            for (let col = 0; col < 3; col++) {
+                let maxRow = col;
+                for (let row = col+1; row < 3; row++) {
+                    if (Math.abs(mat3[row][col]) > Math.abs(mat3[maxRow][col])) maxRow = row;
+                }
+                [mat3[col], mat3[maxRow]] = [mat3[maxRow], mat3[col]];
+                if (Math.abs(mat3[col][col]) < 1e-14) { showError("Log-Poly : points trop colinéaires."); currentModel = { type: 'none', coefficients: {} }; return; }
+                for (let row = col+1; row < 3; row++) {
+                    const f = mat3[row][col] / mat3[col][col];
+                    for (let k = col; k <= 3; k++) mat3[row][k] -= f * mat3[col][k];
+                }
+            }
+            const coef = [0, 0, 0];
+            for (let i = 2; i >= 0; i--) {
+                coef[i] = mat3[i][3];
+                for (let j = i+1; j < 3; j++) coef[i] -= mat3[i][j] * coef[j];
+                coef[i] /= mat3[i][i];
+            }
+            currentModel = { type: 'logpoly2', coefficients: { a: coef[0], b: coef[1], c: coef[2] } };
+
+        // ---- INTERPOLATION EXACTE (Lagrange) ----
+        } else if (type === 'interpolation') {
+            // On stocke les points triés par x pour une interpolation stable
+            // Utilise la forme de Newton (différences divisées) — numériquement plus stable que Lagrange naïf
+            const pts = [...dataPoints].filter(p => p.x > 0 && p.y > 0)
+                                       .sort((a, b) => a.x - b.x);
+            // Déduplique les x identiques (garde le dernier)
+            const unique = [];
+            for (const p of pts) {
+                if (unique.length === 0 || unique[unique.length-1].x !== p.x) unique.push(p);
+                else unique[unique.length-1] = p;
+            }
+            if (unique.length < 2) { showError("Interpolation : besoin d'au moins 2 points distincts avec x > 0 et y > 0."); currentModel = { type: 'none', coefficients: {} }; return; }
+            // Calcul des différences divisées de Newton dans l'espace log-log (bien meilleur pour extrapolation)
+            const xs = unique.map(p => Math.log(p.x));
+            const ys = unique.map(p => Math.log(p.y));
+            const m2 = unique.length;
+            const dd = ys.slice(); // tableau des différences divisées
+            for (let j = 1; j < m2; j++) {
+                for (let i = m2-1; i >= j; i--) {
+                    dd[i] = (dd[i] - dd[i-1]) / (xs[i] - xs[i-j]);
+                }
+            }
+            currentModel = { type: 'interpolation', coefficients: { xs, dd } };
+        }
+    }
+
+    function predict(x) {
+        const { type, coefficients: cf } = currentModel;
+        if (type === 'linear')      return cf.a * x + cf.b;
+        if (type === 'exponential') return cf.a * Math.exp(cf.b * x);
+        if (type === 'power')       return x > 0 ? cf.a * Math.pow(x, cf.b) : null;
+        if (type === 'polynomial')  return cf.c0 + cf.c1 * x + cf.c2 * x * x;
+        if (type === 'logpoly2') {
+            if (x <= 0) return null;
+            const u = Math.log(x);
+            const lny = cf.a * u * u + cf.b * u + cf.c;
+            return Math.exp(lny);
+        }
+        if (type === 'interpolation') {
+            if (x <= 0) return null;
+            const lx = Math.log(x);
+            const { xs, dd } = cf;
+            const m = xs.length;
+            // Évaluation du polynôme de Newton
+            let result = dd[m-1];
+            for (let i = m-2; i >= 0; i--) {
+                result = result * (lx - xs[i]) + dd[i];
+            }
+            return Math.exp(result);
+        }
+        return null;
+    }
+
+    // R² et MAE
+    function calculateMetrics() {
+        if (dataPoints.length < 2 || currentModel.type === 'none') return null;
+        const yMean = dataPoints.reduce((s, p) => s + p.y, 0) / dataPoints.length;
+        let ssTot = 0, ssRes = 0, sumAbs = 0, validCount = 0;
+        for (const p of dataPoints) {
+            const pred = predict(p.x);
+            if (pred === null || isNaN(pred) || !isFinite(pred)) continue;
+            ssTot += (p.y - yMean) ** 2;
+            ssRes += (p.y - pred) ** 2;
+            sumAbs += Math.abs(p.y - pred);
+            validCount++;
+        }
+        if (validCount === 0) return null;
+        const r2 = ssTot < 1e-15 ? 1 : Math.max(0, 1 - ssRes / ssTot);
+        const mae = sumAbs / validCount;
+        return { r2, mae };
+    }
+
+    // =============================================
+    //   INTERFACE : MISE À JOUR COMPLÈTE
+    // =============================================
+    function updateUI() {
+        showError("");
+        calculateRegression();
+        const metrics = calculateMetrics();
+
+        // --- Tableau (trié par points décroissants) ---
+        dataTableBody.innerHTML = '';
+        // Crée un tableau d'indices triés par x décroissant
+        const sortedIndices = dataPoints
+            .map((p, i) => ({ p, i }))
+            .sort((a, b) => b.p.x - a.p.x);
+
+        sortedIndices.forEach(({ p: point, i: realIndex }) => {
+            const pred = predict(point.x);
+            const predStr = (pred !== null && !isNaN(pred) && isFinite(pred)) ? pred.toFixed(4) : '—';
+            const residu = (pred !== null && !isNaN(pred) && isFinite(pred)) ? (point.y - pred) : null;
+            const residuStr = residu !== null ? (residu >= 0 ? '+' : '') + residu.toFixed(4) : '—';
+            const residuColor = residu === null ? '' : residu >= 0 ? 'color:var(--success)' : 'color:var(--danger)';
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${escapeHTML(point.name)}</td>
+                <td>${point.x.toLocaleString('fr-FR')}</td>
+                <td>${point.y.toFixed(4)} Ø</td>
+                <td style="color:var(--accent)">${predStr} Ø</td>
+                <td style="${residuColor}">${residuStr}</td>
+                <td><button class="btn-danger" onclick="deletePoint(${realIndex})">Supprimer</button></td>
+            `;
+            dataTableBody.appendChild(row);
+        });
+        dataCountBadge.textContent = dataPoints.length;
+
+        // --- Équation ---
+        if (currentModel.type === 'linear') {
+            const { a, b } = currentModel.coefficients;
+            const sign = b >= 0 ? '+' : '−';
+            equationDisplay.innerHTML = `y = <b>${a.toExponential(4)}</b> · x ${sign} <b>${Math.abs(b).toFixed(6)}</b>`;
+        } else if (currentModel.type === 'exponential') {
+            const { a, b } = currentModel.coefficients;
+            equationDisplay.innerHTML = `y = <b>${a.toFixed(6)}</b> · e<sup><b>${b.toExponential(4)}</b> · x</sup>`;
+        } else if (currentModel.type === 'power') {
+            const { a, b } = currentModel.coefficients;
+            equationDisplay.innerHTML = `y = <b>${a.toFixed(6)}</b> · x<sup><b>${b.toFixed(6)}</b></sup>`;
+        } else if (currentModel.type === 'polynomial') {
+            const { c0, c1, c2 } = currentModel.coefficients;
+            const sign1 = c1 >= 0 ? '+' : '−';
+            const sign0 = c0 >= 0 ? '+' : '−';
+            equationDisplay.innerHTML = `y = <b>${c2.toExponential(4)}</b> · x² ${sign1} <b>${Math.abs(c1).toExponential(4)}</b> · x ${sign0} <b>${Math.abs(c0).toFixed(4)}</b>`;
+        } else if (currentModel.type === 'logpoly2') {
+            const { a, b, c } = currentModel.coefficients;
+            const signB = b >= 0 ? '+' : '−';
+            const signC = c >= 0 ? '+' : '−';
+            equationDisplay.innerHTML = `ln(y) = <b>${a.toFixed(6)}</b> · ln(x)² ${signB} <b>${Math.abs(b).toFixed(6)}</b> · ln(x) ${signC} <b>${Math.abs(c).toFixed(6)}</b><br><small style="color:var(--text-muted);font-size:0.85rem;">→ y = exp(<b>${a.toFixed(4)}</b>·ln(x)² ${signB} <b>${Math.abs(b).toFixed(4)}</b>·ln(x) ${signC} <b>${Math.abs(c).toFixed(4)}</b>)</small>`;
+        } else if (currentModel.type === 'interpolation') {
+            const n = currentModel.coefficients.xs.length;
+            equationDisplay.innerHTML = `🎯 Polynôme interpolant de Newton (degré ${n-1}) dans l'espace log-log<br><small style="color:var(--text-muted);font-size:0.85rem;">Passe exactement par les <b>${n}</b> points — courbe calculée numériquement</small>`;
+        } else {
+            equationDisplay.innerHTML = "Ajoutez au moins 2 points distincts pour générer l'équation.";
         }
 
-        searchInput.addEventListener('input', updateDisplay);
+        // --- Métriques R² ---
+        if (metrics) {
+            r2Box.style.display = 'flex';
+            const r2pct = (metrics.r2 * 100).toFixed(2);
+            r2ValueEl.textContent = r2pct + '%';
+            r2BarEl.style.width = r2pct + '%';
+            maeValueEl.textContent = metrics.mae.toFixed(4) + ' Ø';
+            // Couleur et label qualité
+            let qualColor, qualTxt;
+            if (metrics.r2 >= 0.99)      { qualColor = '#10b981'; qualTxt = '🟢 Excellent'; }
+            else if (metrics.r2 >= 0.95) { qualColor = '#10b981'; qualTxt = '🟢 Très bon'; }
+            else if (metrics.r2 >= 0.85) { qualColor = '#f59e0b'; qualTxt = '🟡 Bon'; }
+            else if (metrics.r2 >= 0.70) { qualColor = '#f97316'; qualTxt = '🟠 Moyen'; }
+            else                          { qualColor = '#ef4444'; qualTxt = '🔴 Faible'; }
+            r2ValueEl.style.color = qualColor;
+            r2BarEl.style.background = qualColor;
+            qualityLabelEl.textContent = qualTxt;
+            qualityLabelEl.style.color = qualColor;
+        } else {
+            r2Box.style.display = 'none';
+        }
 
-        filterButtons.forEach(button => {
-            button.addEventListener('click', (e) => {
-                filterButtons.forEach(btn => btn.classList.remove('active'));
-                e.target.classList.add('active');
-                currentFilter = e.target.dataset.filter;
-                updateDisplay();
-            });
+        runSimulation();
+        updateChart();   // ← appel unique et propre
+    }
+
+    function runSimulation() {
+        const val = parseFloat(simPoints.value);
+        if (!isNaN(val) && currentModel.type !== 'none') {
+            const pred = predict(val);
+            simResult.textContent = `Résultat : ${(pred !== null && isFinite(pred)) ? pred.toFixed(6) : '—'} Ø`;
+        } else {
+            simResult.textContent = "Résultat : — Ø";
+        }
+    }
+
+    // --- EVENTS ---
+    dataForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        showError("");
+        const name = nameInput.value.trim();
+        const x = parseFloat(pointsInput.value);
+        const y = parseFloat(goldInput.value);
+        if (isNaN(x) || isNaN(y) || x < 0 || y < 0) { showError("Les valeurs saisies doivent être des nombres positifs."); return; }
+        dataPoints.push({ name, x, y });
+        saveDataToStorage();
+        updateUI();
+        nameInput.value = ''; pointsInput.value = ''; goldInput.value = ''; apiSearchInput.value = '';
+        nameInput.focus();
+    });
+
+    function deletePoint(index) {
+        dataPoints.splice(index, 1);
+        saveDataToStorage();
+        updateUI();
+    }
+
+    btnReset.addEventListener('click', () => {
+        if (confirm("Voulez-vous vraiment vider le tableau et purger le cache local ?")) {
+            dataPoints = [];
+            saveDataToStorage();
+            updateUI();
+        }
+    });
+
+    modelTypeSelect.addEventListener('change', () => {
+        modelDesc.textContent = MODEL_DESCRIPTIONS[modelTypeSelect.value] || '';
+        updateUI();
+    });
+
+    simPoints.addEventListener('input', runSimulation);
+
+    function showError(msg) {
+        if (msg) { errorMessage.textContent = msg; errorMessage.style.display = 'block'; }
+        else       { errorMessage.style.display = 'none'; }
+    }
+
+    function escapeHTML(str) {
+        return String(str).replace(/[&<>'"]/g,
+            t => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[t] || t));
+    }
+
+    // =============================================
+    //   GRAPHIQUE CHART.JS — CORRIGÉ
+    // =============================================
+    function initChart() {
+        const ctx = document.getElementById('regressionChart').getContext('2d');
+        chartInstance = new Chart(ctx, {
+            type: 'scatter',
+            data: {
+                datasets: [
+                    {
+                        label: 'Données Constatées',
+                        data: [],
+                        backgroundColor: 'rgba(6,182,212,0.85)',
+                        borderColor: '#06b6d4',
+                        pointRadius: 7,
+                        pointHoverRadius: 10,
+                        pointStyle: 'circle',
+                        order: 2
+                    },
+                    {
+                        label: 'Courbe Modèle',
+                        data: [],
+                        type: 'line',
+                        borderColor: '#a78bfa',
+                        borderWidth: 2.5,
+                        fill: false,
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                        tension: 0.3,
+                        order: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 300 },
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        grid: { color: 'rgba(51,65,85,0.8)' },
+                        ticks: {
+                            color: '#94a3b8',               // ← FIX : couleur des étiquettes d'axe
+                            callback: v => v.toLocaleString('fr-FR')
+                        },
+                        title: { display: true, text: 'Points (x)', color: '#94a3b8', font: { size: 13 } }
+                    },
+                    y: {
+                        type: 'linear',
+                        grid: { color: 'rgba(51,65,85,0.8)' },
+                        ticks: {
+                            color: '#94a3b8',               // ← FIX : couleur des étiquettes d'axe
+                            callback: v => v.toFixed(4) + ' Ø'
+                        },
+                        title: { display: true, text: 'Valeur du Gold en Ø (y)', color: '#94a3b8', font: { size: 13 } }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: '#f8fafc', font: { size: 13 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => {
+                                const raw = ctx.raw;
+                                // Pour le dataset scatter, on enrichit avec le nom du point
+                                if (ctx.datasetIndex === 0) {
+                                    const point = dataPoints[ctx.dataIndex];
+                                    const name = point ? point.name : '';
+                                    return [
+                                        name ? `📍 ${name}` : null,
+                                        `x = ${raw.x.toLocaleString('fr-FR')}`,
+                                        `y = ${raw.y.toFixed(6)} Ø`
+                                    ].filter(Boolean);
+                                }
+                                return `Modèle : ${raw.y.toFixed(6)} Ø`;
+                            }
+                        }
+                    }
+                }
+            }
         });
+    }
 
-        init();
-    </script>
+    // =============================================
+    //   IMPORT / EXPORT EXCEL (SheetJS)
+    // =============================================
+    const excelFileInput  = document.getElementById('excel-file-input');
+    const btnImportExcel  = document.getElementById('btn-import-excel');
+    const btnExportExcel  = document.getElementById('btn-export-excel');
+    const importFeedback  = document.getElementById('import-feedback');
+
+    function showImportFeedback(msg, type) {
+        importFeedback.textContent = msg;
+        importFeedback.className = 'import-feedback ' + type;
+        setTimeout(() => { importFeedback.className = 'import-feedback'; }, 5000);
+    }
+
+    btnImportExcel.addEventListener('click', () => excelFileInput.click());
+
+    excelFileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
+
+                let added = 0, skipped = 0;
+                for (const row of rows) {
+                    // Cherche les colonnes NOM / POINT / OR (insensible à la casse)
+                    const keys = Object.keys(row).reduce((acc, k) => { acc[k.toUpperCase().trim()] = k; return acc; }, {});
+                    const nomKey   = keys['NOM']   || keys['NAME']  || keys['PSEUDO'] || null;
+                    const pointKey = keys['POINT'] || keys['POINTS']|| keys['PTS']    || null;
+                    const orKey    = keys['OR']    || keys['GOLD']  || keys['GOLD_VALUE'] || null;
+
+                    if (!nomKey || !pointKey || !orKey) continue; // colonnes introuvables
+
+                    const nom   = nomKey   ? String(row[nomKey] ?? '').trim()      : '';
+                    const point = pointKey ? parseFloat(row[pointKey])              : NaN;
+                    const or    = orKey    ? parseFloat(row[orKey])                 : NaN;
+
+                    // Si l'une des 3 données est manquante/invalide → on ignore la ligne
+                    if (!nom || isNaN(point) || isNaN(or) || point < 0 || or < 0) {
+                        skipped++;
+                        continue;
+                    }
+                    dataPoints.push({ name: nom, x: point, y: or });
+                    added++;
+                }
+
+                saveDataToStorage();
+                updateUI();
+                const msg = `✅ ${added} ligne(s) importée(s)` + (skipped > 0 ? ` — ${skipped} ignorée(s) (données incomplètes)` : '');
+                showImportFeedback(msg, skipped > 0 ? 'warning' : 'success');
+            } catch(err) {
+                showImportFeedback('❌ Erreur lors de la lecture : ' + err.message, 'warning');
+            }
+            excelFileInput.value = '';
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    btnExportExcel.addEventListener('click', () => {
+        if (dataPoints.length === 0) {
+            showImportFeedback('⚠️ Aucune donnée à exporter.', 'warning');
+            return;
+        }
+        const wsData = [['NOM', 'POINT', 'OR']];
+        for (const p of dataPoints) wsData.push([p.name, p.x, p.y]);
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        // Largeurs de colonnes
+        ws['!cols'] = [{ wch: 22 }, { wch: 18 }, { wch: 18 }];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Données');
+        XLSX.writeFile(wb, 'EmpireImmo_données.xlsx');
+    });
+
+    function updateChart() {
+        if (!chartInstance) return;
+
+        // --- Dataset 0 : TOUS les points réels ---
+        chartInstance.data.datasets[0].data = dataPoints.map(p => ({ x: p.x, y: p.y }));
+
+        // --- Dataset 1 : ligne de tendance ---
+        if (dataPoints.length >= 2 && currentModel.type !== 'none') {
+            const xs = dataPoints.map(p => p.x);
+            const minX = Math.min(...xs);
+            const maxX = Math.max(...xs);
+            const delta = (maxX - minX) || Math.max(maxX * 0.5, 1000);
+            const startX = Math.max(0, minX - delta * 0.15);
+            const endX = maxX + delta * 0.15;
+
+            const STEPS = 120;  // ← haute résolution pour courbes précises
+            const step = (endX - startX) / STEPS;
+            const lineData = [];
+            for (let i = 0; i <= STEPS; i++) {
+                const cx = startX + i * step;
+                const cy = predict(cx);
+                if (cy !== null && isFinite(cy) && !isNaN(cy) && cy >= 0) {
+                    lineData.push({ x: cx, y: cy });
+                }
+            }
+            chartInstance.data.datasets[1].data = lineData;
+        } else {
+            chartInstance.data.datasets[1].data = [];
+        }
+
+        // ← FIX CRITIQUE : un seul appel update(), sans double-appel
+        chartInstance.update();
+    }
+</script>
 </body>
 </html>
