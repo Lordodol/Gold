@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Analyseur Économique - EmpireImmo</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -72,6 +74,24 @@
         .quality-bar-wrap { margin-top: 0.5rem; }
         .quality-bar-bg { height: 6px; background: #1e293b; border-radius: 3px; margin-top: 4px; }
         .quality-bar-fill { height: 6px; border-radius: 3px; transition: width 0.5s ease; }
+        /* SECTION ESTIMATION PAR PSEUDO */
+        .estimation-card { background: linear-gradient(135deg, #0f172a, #1a1040); border: 1px solid var(--primary); }
+        .estimation-card h2 { color: var(--primary-hover); }
+        .estim-result-box { background: #0f172a; border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; margin-top: 1rem; display: none; }
+        .estim-result-box.visible { display: block; }
+        .estim-name { font-size: 1.3rem; font-weight: 700; color: var(--accent); margin-bottom: 0.5rem; }
+        .estim-points { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+        .estim-gold { font-size: 2rem; font-weight: 900; background: linear-gradient(to right, #a78bfa, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .estim-gold-label { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; }
+        .estim-warning { font-size: 0.78rem; color: #f59e0b; background: #1c1100; border: 1px solid #92400e; padding: 0.4rem 0.75rem; border-radius: 6px; margin-top: 0.75rem; display: none; }
+        .estim-warning.show { display: block; }
+        .estim-searching { font-size: 0.85rem; color: var(--text-muted); padding: 0.5rem 0; display: none; }
+        /* ZOOM CONTROLS */
+        .chart-controls { display: flex; gap: 0.5rem; justify-content: flex-end; margin-bottom: 0.75rem; flex-wrap: wrap; }
+        .btn-chart { background: #1e293b; color: var(--text-muted); border: 1px solid var(--border); padding: 0.35rem 0.8rem; border-radius: 6px; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; }
+        .btn-chart:hover { background: #334155; color: var(--text-main); border-color: var(--primary); }
+        .btn-chart.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .zoom-hint { font-size: 0.72rem; color: #475569; align-self: center; }
     </style>
 </head>
 <body>
@@ -211,10 +231,37 @@
             </div>
         </div>
 
+        <!-- ESTIMATION PAR PSEUDO -->
+        <div class="card estimation-card full-width">
+            <h2>🔍 Estimation Gold par Pseudo (via API)</h2>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:0.75rem;align-items:flex-end;">
+                <div class="form-group" style="margin-bottom:0;position:relative;">
+                    <label for="estim-search-input">Rechercher un joueur par pseudo</label>
+                    <input type="text" id="estim-search-input" placeholder="Chargez d'abord les joueurs via le bouton API...">
+                    <div id="estim-suggestions-box" class="suggestions-list"></div>
+                </div>
+                <button type="button" id="btn-estim-estimate" class="btn-primary" style="width:auto;white-space:nowrap;">Estimer</button>
+            </div>
+            <div class="estim-searching" id="estim-searching">⏳ Calcul en cours...</div>
+            <div class="estim-result-box" id="estim-result-box">
+                <div class="estim-name" id="estim-name">—</div>
+                <div class="estim-points" id="estim-points">— points</div>
+                <div class="estim-gold" id="estim-gold">—</div>
+                <div class="estim-gold-label">valeur estimée du Gold (Ø)</div>
+                <div class="estim-warning" id="estim-warning"></div>
+            </div>
+        </div>
+
         <!-- GRAPHIQUE -->
         <div class="card full-width">
             <h2>Graphique & Courbe de Tendance</h2>
-            <div style="position:relative;height:420px;width:100%;">
+            <div class="chart-controls">
+                <span class="zoom-hint">🖱 Molette pour zoomer · Clic+Glisser pour déplacer</span>
+                <button type="button" class="btn-chart" id="btn-zoom-in">＋ Zoom</button>
+                <button type="button" class="btn-chart" id="btn-zoom-out">－ Dézoom</button>
+                <button type="button" class="btn-chart" id="btn-zoom-reset" style="border-color:var(--accent);color:var(--accent);">⊙ Recentrer</button>
+            </div>
+            <div style="position:relative;height:460px;width:100%;">
                 <canvas id="regressionChart"></canvas>
             </div>
         </div>
@@ -734,8 +781,122 @@
     }
 
     // =============================================
-    //   GRAPHIQUE CHART.JS — CORRIGÉ
+    //   SECTION ESTIMATION PAR PSEUDO
     // =============================================
+    const estimSearchInput   = document.getElementById('estim-search-input');
+    const estimSuggestionsBox= document.getElementById('estim-suggestions-box');
+    const btnEstimEstimate   = document.getElementById('btn-estim-estimate');
+    const estimResultBox     = document.getElementById('estim-result-box');
+    const estimNameEl        = document.getElementById('estim-name');
+    const estimPointsEl      = document.getElementById('estim-points');
+    const estimGoldEl        = document.getElementById('estim-gold');
+    const estimWarningEl     = document.getElementById('estim-warning');
+    const estimSearchingEl   = document.getElementById('estim-searching');
+
+    let selectedEstimPlayer  = null;
+
+    estimSearchInput.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        selectedEstimPlayer = null;
+        estimSuggestionsBox.innerHTML = '';
+        if (!query || !apiPlayersData.length) { estimSuggestionsBox.style.display = 'none'; return; }
+        const filtered = apiPlayersData.filter(p => p.name.toLowerCase().includes(query)).slice(0, 12);
+        if (filtered.length > 0) {
+            filtered.forEach(player => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.textContent = `${player.name} (${fmtX(player.points)} pts)`;
+                div.addEventListener('click', () => {
+                    selectedEstimPlayer = player;
+                    estimSearchInput.value = player.name;
+                    estimSuggestionsBox.style.display = 'none';
+                    doEstimation();
+                });
+                estimSuggestionsBox.appendChild(div);
+            });
+            estimSuggestionsBox.style.display = 'block';
+        } else {
+            estimSuggestionsBox.style.display = 'none';
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!estimSuggestionsBox.contains(e.target) && e.target !== estimSearchInput) {
+            estimSuggestionsBox.style.display = 'none';
+        }
+    });
+
+    btnEstimEstimate.addEventListener('click', () => {
+        // Si rien sélectionné via dropdown, tente une recherche exacte par nom
+        if (!selectedEstimPlayer && apiPlayersData.length) {
+            const q = estimSearchInput.value.trim().toLowerCase();
+            selectedEstimPlayer = apiPlayersData.find(p => p.name.toLowerCase() === q)
+                               || apiPlayersData.find(p => p.name.toLowerCase().includes(q));
+        }
+        doEstimation();
+    });
+
+    function doEstimation() {
+        if (!selectedEstimPlayer) {
+            estimResultBox.classList.remove('visible');
+            if (!apiPlayersData.length) {
+                estimWarningEl.textContent = '⚠️ Chargez d\'abord les joueurs via le bouton "Charger Joueurs API".';
+                estimWarningEl.classList.add('show');
+                estimResultBox.classList.add('visible');
+            }
+            return;
+        }
+        if (currentModel.type === 'none') {
+            estimResultBox.classList.add('visible');
+            estimNameEl.textContent = selectedEstimPlayer.name;
+            estimPointsEl.textContent = fmtX(selectedEstimPlayer.points) + ' points';
+            estimGoldEl.textContent = '—';
+            estimWarningEl.textContent = '⚠️ Ajoutez au moins 2 points de données pour activer le modèle prédictif.';
+            estimWarningEl.classList.add('show');
+            return;
+        }
+
+        estimSearchingEl.style.display = 'block';
+        estimResultBox.classList.remove('visible');
+
+        // Légère pause pour laisser le DOM se mettre à jour
+        setTimeout(() => {
+            const x = selectedEstimPlayer.points;
+            const pred = predict(x);
+            estimSearchingEl.style.display = 'none';
+            estimResultBox.classList.add('visible');
+            estimNameEl.textContent = selectedEstimPlayer.name;
+            estimPointsEl.textContent = fmtX(x) + ' points';
+
+            if (pred === null || isNaN(pred) || !isFinite(pred) || pred <= 0) {
+                estimGoldEl.textContent = '—';
+                estimWarningEl.textContent = '⚠️ Le modèle ne peut pas prédire une valeur pour ce joueur (hors plage ou modèle inadapté).';
+                estimWarningEl.classList.add('show');
+                return;
+            }
+
+            estimGoldEl.textContent = fmt(pred, 8) + ' Ø';
+
+            // Avertissements contextuels
+            const xs = dataPoints.map(p => p.x);
+            const maxKnown = Math.max(...xs);
+            const minKnown = Math.min(...xs);
+            estimWarningEl.classList.remove('show');
+
+            if (x > maxKnown * 5) {
+                estimWarningEl.textContent = `⚠️ Extrapolation lointaine : ${fmtX(x)} pts est bien au-delà de vos données (max connu : ${fmtX(maxKnown)} pts). La précision diminue.`;
+                estimWarningEl.classList.add('show');
+            } else if (x > maxKnown) {
+                estimWarningEl.textContent = `ℹ️ Extrapolation : ${fmtX(x)} pts dépasse vos données connues (max : ${fmtX(maxKnown)} pts).`;
+                estimWarningEl.classList.add('show');
+            } else if (x < minKnown) {
+                estimWarningEl.textContent = `ℹ️ Extrapolation basse : ${fmtX(x)} pts est en dessous de vos données connues (min : ${fmtX(minKnown)} pts).`;
+                estimWarningEl.classList.add('show');
+            }
+        }, 50);
+    }
+
+
     function initChart() {
         const ctx = document.getElementById('regressionChart').getContext('2d');
         chartInstance = new Chart(ctx, {
@@ -775,49 +936,74 @@
                         type: 'linear',
                         position: 'bottom',
                         grid: { color: 'rgba(51,65,85,0.8)' },
-                        ticks: {
-                            color: '#94a3b8',
-                            callback: v => fmtX(v),
-                            maxTicksLimit: 8
-                        },
+                        ticks: { color: '#94a3b8', callback: v => fmtX(v), maxTicksLimit: 8 },
                         title: { display: true, text: 'Points (x)', color: '#94a3b8', font: { size: 13 } }
                     },
                     y: {
                         type: 'linear',
                         grid: { color: 'rgba(51,65,85,0.8)' },
-                        ticks: {
-                            color: '#94a3b8',
-                            callback: v => fmt(v) + ' Ø',
-                            maxTicksLimit: 8
-                        },
+                        ticks: { color: '#94a3b8', callback: v => fmt(v) + ' Ø', maxTicksLimit: 8 },
                         title: { display: true, text: 'Valeur du Gold en Ø (y)', color: '#94a3b8', font: { size: 13 } }
                     }
                 },
                 plugins: {
-                    legend: {
-                        labels: { color: '#f8fafc', font: { size: 13 } }
-                    },
+                    legend: { labels: { color: '#f8fafc', font: { size: 13 } } },
                     tooltip: {
                         callbacks: {
                             label: (ctx) => {
                                 const raw = ctx.raw;
                                 if (ctx.datasetIndex === 0) {
-                                    // Retrouve le nom via correspondance de coordonnées
                                     const match = dataPoints.find(p => p.x === raw.x && p.y === raw.y);
                                     const name = match ? match.name : '';
-                                    return [
-                                        name ? `📍 ${name}` : null,
-                                        `x = ${fmtX(raw.x)}`,
-                                        `y = ${fmt(raw.y, 8)} Ø`
-                                    ].filter(Boolean);
+                                    return [name ? `📍 ${name}` : null, `x = ${fmtX(raw.x)}`, `y = ${fmt(raw.y, 8)} Ø`].filter(Boolean);
                                 }
                                 return `Modèle : ${fmt(raw.y, 8)} Ø`;
                             }
+                        }
+                    },
+                    zoom: {
+                        pan: { enabled: true, mode: 'xy', threshold: 5 },
+                        zoom: {
+                            wheel: { enabled: true, speed: 0.1 },
+                            pinch: { enabled: true },
+                            mode: 'xy'
                         }
                     }
                 }
             }
         });
+
+        document.getElementById('btn-zoom-in').addEventListener('click',    () => chartInstance.zoom(1.3));
+        document.getElementById('btn-zoom-out').addEventListener('click',   () => chartInstance.zoom(0.77));
+        document.getElementById('btn-zoom-reset').addEventListener('click', () => recenterChart());
+    }
+
+    function computeChartBounds() {
+        if (!dataPoints.length) return null;
+        const xs = dataPoints.map(p => p.x).filter(v => v > 0);
+        const ys = dataPoints.map(p => p.y).filter(v => v > 0);
+        if (!xs.length) return null;
+        const minX = Math.min(...xs), maxX = Math.max(...xs);
+        const minY = Math.min(...ys), maxY = Math.max(...ys);
+        const logPadX = Math.max((Math.log10(maxX) - Math.log10(Math.max(minX,1))) * 0.2, 0.15);
+        const logPadY = Math.max((Math.log10(maxY) - Math.log10(Math.max(minY,1))) * 0.2, 0.15);
+        return {
+            xMin: Math.pow(10, Math.log10(Math.max(minX,1)) - logPadX),
+            xMax: Math.pow(10, Math.log10(maxX) + logPadX),
+            yMin: Math.max(0, Math.pow(10, Math.log10(Math.max(minY,1)) - logPadY)),
+            yMax: Math.pow(10, Math.log10(maxY) + logPadY)
+        };
+    }
+
+    function recenterChart() {
+        if (!chartInstance) return;
+        const bounds = computeChartBounds();
+        if (!bounds) { chartInstance.resetZoom(); return; }
+        chartInstance.options.scales.x.min = bounds.xMin;
+        chartInstance.options.scales.x.max = bounds.xMax;
+        chartInstance.options.scales.y.min = bounds.yMin;
+        chartInstance.options.scales.y.max = bounds.yMax;
+        chartInstance.update('none');
     }
 
     // =============================================
